@@ -1,0 +1,6 @@
+# scan reports
+.scan_results
+
+# system files
+.DS_Store
+Thumbs.db

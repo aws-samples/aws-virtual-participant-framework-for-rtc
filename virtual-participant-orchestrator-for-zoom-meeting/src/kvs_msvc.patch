@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 60ecca1..bc93aaf 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -126,7 +126,7 @@ else()
+ endif()
+ 
+ if (WIN32)
+-  set(PKG_CONFIG_EXECUTABLE "C:\\gstreamer\\1.0\\x86_64\\bin\\pkg-config.exe")
++  set(PKG_CONFIG_EXECUTABLE "C:\\gstreamer\\1.0\\msvc_x86_64\\bin\\pkg-config.exe")
+ endif()
+ 
+ ############# Enable Sanitizers ############

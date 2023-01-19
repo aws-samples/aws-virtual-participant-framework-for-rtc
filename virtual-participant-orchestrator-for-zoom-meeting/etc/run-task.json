@@ -1,0 +1,19 @@
+{
+    "cluster": "PipelineAppStage-PipelineAppStack-FargateCluster7CCD5F93-OBXn7CntOj1P",
+    "count": 1,
+    "enableExecuteCommand": true,
+    "launchType": "FARGATE",
+    "networkConfiguration": {
+        "awsvpcConfiguration": {
+            "subnets": [
+                "subnet-0565aceb20e50d718"
+            ],
+            "securityGroups": [
+                "sg-0bd963a09f2127d96"
+            ],
+            "assignPublicIp": "DISABLED"
+        }
+    },
+    "platformVersion": "LATEST",
+    "taskDefinition": "ZoomMeetingBotCdkStackPipelineAppStagePipelineAppStackZoomTaskDefinition7C9DFC1C"
+}
