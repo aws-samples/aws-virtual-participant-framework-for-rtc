@@ -12,7 +12,7 @@ This virtual participant orchestrator for Zoom Meeting is developed by AWS Proto
 
 ## Architecture
 
-![Prototype Architecture](img/Zoom-Virtual-Participant.png)
+![Prototype Architecture](docs/images/Zoom-Virtual-Participant.png)
 
 ## Important
 
