@@ -70,26 +70,7 @@ If you haven't completed this step from the parent directory instructions
     ``` 
 
 
-### Set environment variables
-
-* The following environment variables must set for the local runtime or for the docker container that runs the Windows app:
-
-	```
-	AWS_ACCESS_KEY_ID=<IAM User Access Key>
-	AWS_SECRET_ACCESS_KEY=<IAM User Secret Key - do not expose>
-	KVS_STREAM_SUFFIX=<used to distinguish Amazon KVS streams for different meetings>
-	AWS_DEFAULT_REGION=<e.g. us-west-2>
-	SNS_TOPIC_ARN=<Taking the form of arn:aws:sns:<AWS_Region>:<AWS_Account_ID>:<Topic_Name>"
-	ZOOM_APP_KEY=<Zoom SDK KEY from Zoom App Marketplace>
-	ZOOM_APP_SECRET=<Zoom SDK SECRET from Zoom App Marketplace>
-	``` 
-
-## Building the Zoom Meeting Windows SDK Application
-
-There are two approaches to preparing the build environment and installing the dependencies required for this prototype, using a local build or Docker build (i.e. for CI/CD pipelines).
-
-
-### Local build
+## Building the Zoom Meeting Windows SDK Application Locally
 
 The following instructions will:
 
@@ -99,14 +80,14 @@ The following instructions will:
 * Installing additional dependencies with [vcpkg package manager for C/C++](https://vcpkg.io/en/index.html)
 * build and run the 
 
-#### Install GStreamer for Windows (v1.20.3)
+### Install GStreamer for Windows (v1.20.3)
 
 Download and install the following *.msi installation packages. During installation, select **Complete** installation.
 
 * [GStreamer 1.20.3 runtime installer - MSVC 64-bit (VS 2019, Release CRT)](https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi)
 * [GStreamer 1.20.3 development installer - MSVC 64-bit (VS 2019, Release CRT)](https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-devel-msvc-x86_64-1.20.3.msi)
 
-#### Install StrawberryPerl and Netwide Assembler (NASM) for Windows
+### Install StrawberryPerl and Netwide Assembler (NASM) for Windows
 
 Perform the following tasks:
 
@@ -123,7 +104,7 @@ Perform the following tasks:
 	git config --system core.longpaths true
 	``` 
 
-#### Build the Amazon Kinesis Video Streams Producer SDK for C++
+### Build the Amazon Kinesis Video Streams Producer SDK for C++
 
 Perform the following tasks in windows command prompt (make sure you have Git installed first!):
 
@@ -146,7 +127,7 @@ Perform the following tasks in windows command prompt (make sure you have Git in
 
 > NOTE: You may need to edit the first lines of `build_kvs_windows.bat` based on the version of Visual Studio 2019 you have installed.
 
-#### Install dependencies with vcpkg
+### Install dependencies with vcpkg
 
 1. Open a new command prompt window and run: 
 	
@@ -170,8 +151,24 @@ Perform the following tasks in windows command prompt (make sure you have Git in
 	vcpkg\vcpkg integrate install
 	```
 
+### Set environment variables
 
-#### Build and run application with Visual Studio 
+Set the following environment variables on the local windows machine:
+
+	```
+	AWS_ACCESS_KEY_ID=<IAM User Access Key>
+	AWS_SECRET_ACCESS_KEY=<IAM User Secret Key - do not expose>
+	KVS_STREAM_SUFFIX=<used to distinguish Amazon KVS streams for different meetings>
+	AWS_DEFAULT_REGION=<e.g. us-west-2>
+	SNS_TOPIC_ARN=<Taking the form of arn:aws:sns:<AWS_Region>:<AWS_Account_ID>:<Topic_Name>"
+	ZOOM_APP_KEY=<Zoom SDK KEY from Zoom App Marketplace>
+	ZOOM_APP_SECRET=<Zoom SDK SECRET from Zoom App Marketplace>
+	``` 
+
+> :warning: These variables contain sensitive AWS and Zoom account information. Ensure they are not exposed inadvertently. 
+
+
+### Build and run application with Visual Studio 
 
 To test the functionality of the applicaiton perform the following tasks:
 
@@ -197,18 +194,6 @@ To test the functionality of the applicaiton perform the following tasks:
 > i. To read on the capabilities of the Zoom Meeting Winodws SDK please refer to the [docs on Zoom App Marketplace](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/)
 >
 > ii. The audio streamed to Amazon KVS is PCM-uLaw format. This format is not supported for playback in the AWS console or using HLS/MPEG-DASH. However it can be used a supported format for transcription in Amazon Transcribe.
-
-### Docker build
-
-In order to build the prototype environment and application in Docker, you will need to [install Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/), and [enable the use of Windows Containers](https://docs.docker.com/desktop/faqs/windowsfaqs/#how-do-i-switch-between-windows-and-linux-containers) (Linux containers are enabled by default).
-
-From the root directory of this repository, run: 
-
-```
-docker build . -t virtual-participant-zoom-meeting
-``` 
-
-> Note: You must supply environment variables listed [above](#set-environment-variables) at runtime to the container. See [docker docs](https://docs.docker.com/engine/reference/commandline/run/#-set-environment-variables--e---env---env-file) for examples
 
 
 ## Run Amazon Transcribe Tester NodeJS app 
