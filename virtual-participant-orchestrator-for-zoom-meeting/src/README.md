@@ -23,8 +23,8 @@ The simplest way to run the virtual participant framework in your AWS account is
 > NOTE: This prototype was built/tested on Windows 10 64-bit Professional edition. Other versions of Windows may or may not be compatible with this project.
 
 * Windows 10 64-bit operating system (or similar)
-* Visual Studio Community 2019 (or Professional/Enterprise 2019; please install the same way described in [Zoom Meeting Windows SDK Getting Started - Prerequisites](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/getting-started/prerequisites/), including the option for **Windows 10 SDK (10.0.18362.0)**
-* [Python3 for Windows 64-bit](https://www.python.org/ftp/python/3.10.6/python-3.10.6-amd64.exe)
+* Visual Studio Community (, Professional or Enterprise) 2019 (or 2022); please "ensure that you install Desktop development with C++ option from Workloads and the platform SDKs that you are building for" as described in [Zoom Meeting Windows SDK Getting Started - Prerequisites](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/getting-started/prerequisites/), including the option for **Windows 10 SDK (10.0.18362.0)**
+* [Python3 for Windows 64-bit](https://www.python.org/downloads/windows/)
 * Git
 
 ## Getting Started
@@ -125,7 +125,7 @@ Perform the following tasks in windows command prompt (make sure you have Git in
 	setx /M PATH "%PATH%;C:\amazon-kinesis-video-streams-producer-sdk-cpp\open-source\local\bin;C:\amazon-kinesis-video-streams-producer-sdk-cpp\open-source\local\lib"
 	```
 
-> NOTE: You may need to edit the first lines of `build_kvs_windows.bat` based on the version of Visual Studio 2019 you have installed.
+> NOTE: You may need to edit the first lines of `build_kvs_windows.bat` based on the version of Visual Studio Community (, Professional or Enterprise) 2019 (or 2022) you have installed.
 
 ### Install dependencies with vcpkg
 
