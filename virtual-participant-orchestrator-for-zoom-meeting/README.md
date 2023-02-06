@@ -44,13 +44,14 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 3. From the options available "Create" a "Meeting SDK" app type and follow the instructions
 4. In the resulting screen, click on "App Credential" from the sidebar to make note of **"SDK Key"** and **"SDK Secret"** 
 
-> Note: Later you will need to download the Windows SDK from this screen using the "Download" option on the sidebar.
+> Note: Leave browser tab open. Later you will need to download the Windows SDK from this screen using the "Download" option on the sidebar.
 
-### Create Repository and Secrets
+### Create Repository and Secrets for CDK Deployment
 
-1. Create a new AWS CodeCommit repository, and clone the repo locally.
+1. Create a new AWS CodeCommit repository, and clone it to a local directory that is outside the path of the directories cloned from GitHub.
+> Note: The CodeCommit repository will include proprietary and licensed Zoom Windows SDK files. Changes commited to the CodeCommit repo **should not** be pushed upstream to the OSS GitHub repository. If you are interested in contributing to the source that links to Zoom Window SDK libraries, please create a GitHub issue or reach out to the maintainers for instructions.
 
-2. Copy the contents of this project to the locally cloned repository
+2. Copy the contents of [this subproject](../virtual-participant-orchestrator-for-zoom-meeting/) (not the root directory of this GitHub repo) to the root directory of the CodeCommit local repo (the one you created in the above step).
  
 3. Create two secrets in AWS Secrets Manager named `zoomsecret` and `usersecret`. 
 
@@ -126,7 +127,7 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
 ### Deploy CDK Application
 
-1. Push code to your CodeCommit repository:
+1. Commit all changes to git and push code to your CodeCommit repository (Do not push upstream to GitHub):
 
     ```
     git add .

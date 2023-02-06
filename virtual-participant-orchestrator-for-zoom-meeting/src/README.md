@@ -155,15 +155,15 @@ Perform the following tasks in windows command prompt (make sure you have Git in
 
 Set the following environment variables on the local windows machine:
 
-	```
-	AWS_ACCESS_KEY_ID=<IAM User Access Key>
-	AWS_SECRET_ACCESS_KEY=<IAM User Secret Key - do not expose>
-	KVS_STREAM_SUFFIX=<used to distinguish Amazon KVS streams for different meetings>
-	AWS_DEFAULT_REGION=<e.g. us-west-2>
-	SNS_TOPIC_ARN=<Taking the form of arn:aws:sns:<AWS_Region>:<AWS_Account_ID>:<Topic_Name>"
-	ZOOM_APP_KEY=<Zoom SDK KEY from Zoom App Marketplace>
-	ZOOM_APP_SECRET=<Zoom SDK SECRET from Zoom App Marketplace>
-	``` 
+```
+AWS_ACCESS_KEY_ID=<IAM User Access Key>
+AWS_SECRET_ACCESS_KEY=<IAM User Secret Key - do not expose>
+KVS_STREAM_SUFFIX=<used to distinguish Amazon KVS streams for different meetings>
+AWS_DEFAULT_REGION=<e.g. us-west-2>
+SNS_TOPIC_ARN=<Taking the form of arn:aws:sns:<AWS_Region>:<AWS_Account_ID>:<Topic_Name>"
+ZOOM_APP_KEY=<Zoom SDK KEY from Zoom App Marketplace>
+ZOOM_APP_SECRET=<Zoom SDK SECRET from Zoom App Marketplace>
+``` 
 
 > :warning: These variables contain sensitive AWS and Zoom account information. Ensure they are not exposed inadvertently. 
 
