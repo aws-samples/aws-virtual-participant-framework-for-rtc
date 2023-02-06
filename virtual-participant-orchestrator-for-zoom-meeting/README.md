@@ -51,7 +51,7 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 1. Create a new AWS CodeCommit repository, and clone it to a local directory that is outside the path of the directories cloned from GitHub.
 > Note: The CodeCommit repository will include proprietary and licensed Zoom Windows SDK files. Changes commited to the CodeCommit repo **should not** be pushed upstream to the OSS GitHub repository. If you are interested in contributing to the source that links to Zoom Window SDK libraries, please create a GitHub issue or reach out to the maintainers for instructions.
 
-2. Copy the contents of [this subproject](../virtual-participant-orchestrator-for-zoom-meeting/) (not the root directory of this GitHub repo) to the root directory of the CodeCommit local repo (the one you created in the above step).
+2. Copy the contents of [this subproject](../virtual-participant-orchestrator-for-zoom-meeting/) (not the root directory of this GitHub repo) to the root directory of the CodeCommit cloned repo (the one you created in the above step).
  
 3. Create two secrets in AWS Secrets Manager named `zoomsecret` and `usersecret`. 
 
