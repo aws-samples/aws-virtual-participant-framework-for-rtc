@@ -910,7 +910,7 @@ index 0000000..7a25449
 +};
 diff --git a/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp
 new file mode 100644
-index 0000000..37a355a
+index 0000000..bf960a6
 --- /dev/null
 +++ b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp
 @@ -0,0 +1,262 @@
@@ -945,7 +945,7 @@ index 0000000..37a355a
 +
 +    //stream name must be less than 256 bits
 +    meeting_kvs_stream_name = stream_name_ostream.str().substr(0, 256);
-+    
++
 +    if(USE_MIXED_AUDIO)
 +    {
 +        setupGstPipeline(meeting_kvs_stream_name.c_str() , "kvs-mixedaudio-pipeline", mixedAudioData);
@@ -974,7 +974,7 @@ index 0000000..37a355a
 +    data.audiotestsrc = gst_element_factory_make("audiotestsrc", "audiotestsrc");
 +    data.audioconvert = gst_element_factory_make("audioconvert", "audioconvert");
 +    data.audio_queue1 = gst_element_factory_make("queue", "audio_queue1");
-+    //   data.audioenc = gst_element_factory_make("voaacenc", "audioenc");  
++    //   data.audioenc = gst_element_factory_make("voaacenc", "audioenc");
 +    data.audioenc = gst_element_factory_make("mulawenc", "audioenc");
 +
 +    /* video elements */
@@ -1078,7 +1078,7 @@ index 0000000..37a355a
 +}
 +
 +void ZoomSDKAudioRawDataDelegate::onOneWayAudioRawDataReceived(AudioRawData *data_, uint32_t node_id)
-+{    
++{
 +    if (!USE_MIXED_AUDIO)
 +    {
 +        // auto node_id_string = std::to_string(node_id);
@@ -1100,10 +1100,10 @@ index 0000000..37a355a
 +            // std::cout << "$$$$ Unexpected participant is speaking  " << node_id << "$$$$" << std::endl
 +            //    << "$$$$ first participant is  " << first_participant_id << "$$$$" << std::endl
 +            //    << "$$$$ second participant is   " << second_participant_id << "$$$$" << std::endl;
-+            /*drop audio frame*/ 
++            /*drop audio frame*/
 +            return;
 +        }
-+    
++
 +        if(node_id == first_participant_id)
 +            onAudioRawDataReceivedForGstAppSrc(data_, callerData, false);
 +        else
@@ -1159,7 +1159,7 @@ index 0000000..37a355a
 +        auto structure_string = structure_stream.str().c_str();
 +       // std::cout << "Structure:  " << structure_string << std::endl;
 +        auto gstructure = gst_structure_from_string(structure_string, NULL);
-+        if (gstructure != NULL) 
++        if (gstructure != NULL)
 +        {
 +            auto event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, gstructure);
 +            auto result = gst_element_send_event(gstCustomData.pipeline, event);
@@ -1168,20 +1168,20 @@ index 0000000..37a355a
 +                GST_ERROR("send metadata failed");
 +            }
 +        }
-+        else 
++        else
 +        {
 +            GST_ERROR("structure string is wrong");
 +
-+        }   
++        }
 +    }
 +    msecond_counter += buffer->duration / GST_MSECOND;
 +}
 diff --git a/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h
 new file mode 100644
-index 0000000..eb436d0
+index 0000000..2d080eb
 --- /dev/null
 +++ b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,72 @@
 +// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 +// SPDX-License-Identifier: Apache-2.0
 +
@@ -1190,6 +1190,11 @@ index 0000000..eb436d0
 +#include "zoom_sdk.h"
 +#include "rawdata/rawdata_audio_helper_interface.h"
 +#include "zoom_sdk_raw_data_def.h"
++
++#include <gst/gst.h>
++#include <gst/audio/audio.h>
++#include <gst/app/gstappsrc.h>
++#include <queue>
 +
 +
 +#ifndef ZOOM_MEETING_AUDIO_SAMPLE_RATE
@@ -1208,7 +1213,7 @@ index 0000000..eb436d0
 +typedef struct _GstCustomData
 +{
 +    /*Multiplexed Audio elements*/
-+    GstElement* pipeline, * appsrc, * audio_queue1, * audiotestsrc, * audioconvert, * audioenc; 
++    GstElement* pipeline, * appsrc, * audio_queue1, * audiotestsrc, * audioconvert, * audioenc;
 +
 +    /*Sink element -> KVS Sink*/
 +    GstElement* sink;
@@ -1219,13 +1224,13 @@ index 0000000..eb436d0
 +#endif
 +
 +    /* Number of samples generated so far (for timestamp generation) */
-+    guint64 num_samples; 
++    guint64 num_samples;
 +} GstCustomData;
 +
 +class ZoomSDKAudioRawDataDelegate : public ZOOM_SDK_NAMESPACE::IZoomSDKAudioRawDataDelegate {
 +private:
 +    GstCustomData mixedAudioData;
-+    
++
 +    GstCustomData callerData;
 +    GstCustomData agentData;
 +
@@ -1233,7 +1238,7 @@ index 0000000..eb436d0
 +    void setupGstPipeline(const char* stream_name, const char* pipeline_name, GstCustomData& data);
 +    void onAudioRawDataReceivedForGstAppSrc(AudioRawData* data_, GstCustomData gstCustomData, boolean useMixedAudio);
 +    void injectKeyFramAndMetaData(GstBuffer*& buffer, GstCustomData data);
-+    
++
 +    char const* access_key, * secret_key, * aws_region;
 +    std::string meeting_kvs_stream_name;
 +
@@ -1817,21 +1822,22 @@ index efc4485..294ca14 100644
  		m_customizedMeetingUI->PageButtonClick(btnType);
  	}
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_app.h b/x64/demo/sdk_demo_v2/sdk_demo_app.h
-index c5c125b..e2d6cb4 100644
+index c5c125b..e67d79f 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_app.h
 +++ b/x64/demo/sdk_demo_v2/sdk_demo_app.h
-@@ -9,6 +9,10 @@
+@@ -9,6 +9,11 @@
  #include "Join_meeting_for_login_user_ui.h"
  #include "custom_ui_mgr.h"
  #include "more_menu_ui.h"
 +#include <aws/core/Aws.h>
 +#include <thread>
++#include <crow.h>
 +
 +
  class CSDKDemoApp : public CSDKDemoAppEvent
  {
  public:
-@@ -19,14 +23,14 @@ public:
+@@ -19,14 +24,14 @@ public:
  	void Stop();
  	void Cleanup();
  	virtual void onSwitchToLoginUI(SwitchToLoginUIType type_);
@@ -1849,7 +1855,7 @@ index c5c125b..e2d6cb4 100644
  	virtual void onShowChatWindow();
  	virtual void onShowShareWindow();
  	virtual void onShowGalleryViewWindow();
-@@ -47,6 +51,11 @@ private:
+@@ -47,6 +52,11 @@ private:
  	CSDKJoinMeetingForLoginUserUIMgr* m_sdk_join_meeting_for_login_user_ui_mgr;
  	CCustomizeInMeetingUIMgr* m_customizedMeetingUI;
  	CMoreMenuUIMgr* m_more_menu_ui;
@@ -1862,6 +1868,19 @@ index c5c125b..e2d6cb4 100644
  
  extern CSDKDemoApp g_demoApp;
 \ No newline at end of file
+diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.cpp b/x64/demo/sdk_demo_v2/sdk_demo_v2.cpp
+index ecb11d8..8111d32 100644
+--- a/x64/demo/sdk_demo_v2/sdk_demo_v2.cpp
++++ b/x64/demo/sdk_demo_v2/sdk_demo_v2.cpp
+@@ -8,7 +8,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*l
+ 
+ 	g_demoApp.Run(hInstance);
+ 	MSG msg;
+-	while (GetMessage(&msg, NULL, 0, 0))
++	while (GetMessageA(&msg, NULL, 0, 0))
+ 	{
+ 		if (WM_QUIT == msg.message)
+ 		{
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
 index e270f52..b935e2a 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
@@ -2042,19 +2061,24 @@ index 00ad46d..82df2db 100644
    <ItemGroup>
      <ResourceCompile Include="sdk_demo_v2.rc">
 diff --git a/x64/demo/sdk_demo_v2/sdk_init_auth_ui.cpp b/x64/demo/sdk_demo_v2/sdk_init_auth_ui.cpp
-index 2314e1c..2e3f0f4 100644
+index 2314e1c..88fdb90 100644
 --- a/x64/demo/sdk_demo_v2/sdk_init_auth_ui.cpp
 +++ b/x64/demo/sdk_demo_v2/sdk_init_auth_ui.cpp
-@@ -1,6 +1,8 @@
+@@ -1,6 +1,13 @@
  #include "stdafx.h"
  #include "sdk_init_auth_ui.h"
  #include "mess_info.h"
 +#include <codecvt>
 +
++#undef min
++#undef max
++#include "jwt/jwt.hpp"
++
++
  CInitSDKUIGroup::CInitSDKUIGroup()
  {
  	m_InitSDKPage = NULL;
-@@ -38,6 +40,8 @@ void CInitSDKUIGroup::Show()
+@@ -38,6 +45,8 @@ void CInitSDKUIGroup::Show()
  		{
  			m_mainFrame->SetCurrentPage(m_InitSDKPage);
  		}
@@ -2063,7 +2087,7 @@ index 2314e1c..2e3f0f4 100644
  	}
  }
  void CInitSDKUIGroup::Hide()
-@@ -78,7 +82,9 @@ void CInitSDKUIGroup::DoInitBtnClick()
+@@ -78,7 +87,9 @@ void CInitSDKUIGroup::DoInitBtnClick()
  		initParam.hResInstance = GetModuleHandle(NULL);
  		initParam.enableLogByDefault = true;
  		initParam.enableGenerateDump = true;
@@ -2074,7 +2098,7 @@ index 2314e1c..2e3f0f4 100644
  		if (m_chkCustomizedUI)
  			customiezed_ui_mode = m_chkCustomizedUI->GetCheck();
  		if (customiezed_ui_mode)
-@@ -145,6 +151,7 @@ void CAuthSDKUIGroup::UninitWindow()
+@@ -145,6 +156,7 @@ void CAuthSDKUIGroup::UninitWindow()
  
  void CAuthSDKUIGroup::Show()
  {
@@ -2082,7 +2106,7 @@ index 2314e1c..2e3f0f4 100644
  	if (m_AuthSDKPage)
  	{
  		m_AuthSDKPage->SetVisible(true);
-@@ -152,6 +159,44 @@ void CAuthSDKUIGroup::Show()
+@@ -152,6 +164,44 @@ void CAuthSDKUIGroup::Show()
  		{
  			m_mainFrame->SetCurrentPage(m_AuthSDKPage);
  		}
@@ -2096,7 +2120,7 @@ index 2314e1c..2e3f0f4 100644
 +		{
 +			auto zoom_app_key = std::string(key_chars);
 +			auto zoom_app_secret = std::string(secret_chars);
-+			
++
 +			auto now = std::chrono::system_clock::now();
 +			auto expirey = now + std::chrono::hours{ 48 } - std::chrono::minutes{ 1 };
 +
@@ -2127,7 +2151,7 @@ index 2314e1c..2e3f0f4 100644
  	}
  }
  
-@@ -176,9 +221,10 @@ void CAuthSDKUIGroup::Notify( TNotifyUI& msg )
+@@ -176,9 +226,10 @@ void CAuthSDKUIGroup::Notify( TNotifyUI& msg )
  
  void CAuthSDKUIGroup::DoAuthBtnClick()
  {
@@ -2139,7 +2163,7 @@ index 2314e1c..2e3f0f4 100644
  	if (strToken.size() > 0 )
  	{
  		ZOOM_SDK_NAMESPACE::AuthContext param;
-@@ -187,10 +233,12 @@ void CAuthSDKUIGroup::DoAuthBtnClick()
+@@ -187,10 +238,12 @@ void CAuthSDKUIGroup::DoAuthBtnClick()
  		{
  			if (m_mainFrame)
  				m_mainFrame->ShowErrorMessage(L"auth sdk failed");
@@ -2152,7 +2176,7 @@ index 2314e1c..2e3f0f4 100644
  		}
  	}
  }
-@@ -202,10 +250,12 @@ void CAuthSDKUIGroup::onSDKAuthed(ZOOM_SDK_NAMESPACE::AuthResult ret)
+@@ -202,10 +255,12 @@ void CAuthSDKUIGroup::onSDKAuthed(ZOOM_SDK_NAMESPACE::AuthResult ret)
  		m_mainFrame->SwitchToWaitingPage(NULL, false);
  		if (ZOOM_SDK_NAMESPACE::AUTHRET_SUCCESS != ret)
  		{
@@ -2166,7 +2190,7 @@ index 2314e1c..2e3f0f4 100644
  		}
  	}
 diff --git a/x64/demo/sdk_demo_v2/stdafx.h b/x64/demo/sdk_demo_v2/stdafx.h
-index 8c86583..116c37f 100644
+index 8c86583..bf2ed05 100644
 --- a/x64/demo/sdk_demo_v2/stdafx.h
 +++ b/x64/demo/sdk_demo_v2/stdafx.h
 @@ -8,6 +8,8 @@
@@ -2178,17 +2202,13 @@ index 8c86583..116c37f 100644
  // Windows Header Files:
  #include <windows.h>
  
-@@ -20,3 +22,11 @@
+@@ -20,3 +22,7 @@
  #include "UIlib.h"
  using namespace DuiLib;
  // TODO: reference additional headers your program requires here
-+#include <crow.h>
++#include <iostream>
++#include <sstream>
 +#include <stdint.h>
-+#include <gst/gst.h>
-+#include <gst/audio/audio.h>
-+#include <gst/app/gstappsrc.h>
-+#include <queue>
-+#include "jwt/jwt.hpp"
 +#include "sdk_util.h"
 diff --git a/x64/h/meeting_service_interface.h b/x64/h/meeting_service_interface.h
 index 38972a9..34969ae 100644

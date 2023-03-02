@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "sdk-demo-v2",
+  "version": "0.0.1",
+  "builtin-baseline": "8563627bf17c6b76460a35c0e668557be2f8bbdc",
+  "dependencies": [
+    {
+      "name": "aws-sdk-cpp", 
+      "features": ["sns"] 
+    },
+    "crow",
+    "cpp-jwt"
+  ],
+  "overrides": [
+    {
+      "name": "aws-sdk-cpp",
+      "version": "1.9.220",
+      "port-version": 3
+    },
+    {
+      "name": "crow",
+      "version": "1.0-5"
+    },
+    {
+      "name": "cpp-jwt",
+      "version": "2022-08-27",
+      "port-version": 1
+    }
+  ]
+}
