@@ -148,6 +148,7 @@ export class ZoomMeetingBotCdkAppStack extends cdk.Stack {
             image: ecs.ContainerImage.fromEcrRepository(repo),
             entryPoint: ["sdk_demo_v2.exe"],
             essential: true,
+            logging: ecs.LogDrivers.awsLogs({streamPrefix: 'zoom-task-group-logs', logRetention: 30}),
             environment: {
                 "KVS_STREAM_SUFFIX": "zoom",
                 "AWS_DEFAULT_REGION": this.node.tryGetContext('region'),

@@ -18,7 +18,7 @@ export class ZoomMeetingBotCdkPipelineStack extends cdk.Stack {
       dockerEnabledForSynth: true,
       synth: new ShellStep('Synth', {
         input: CodePipelineSource.codeCommit(repository, 'main'),
-        commands: ['npm ci', 'npm run build', 'npx cdk synth']
+        commands: ['npm install -g npm@latest','npm ci', 'npm run build', 'npx cdk synth']
       })
     });
 
