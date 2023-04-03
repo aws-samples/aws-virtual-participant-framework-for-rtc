@@ -127,7 +127,19 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
 ### Deploy CDK Application
 
-1. Commit all changes to git and push code to your CodeCommit repository (Do not push upstream to GitHub):
+1. Install required dependencies:
+
+    ```
+    npm install
+    ```
+
+2. Bootstrap your account/region for CDK deployment:
+
+    ```
+    cdk bootstrap
+    ```
+
+3. Commit all changes to git and push code to your CodeCommit repository (Do not push upstream to GitHub):
 
     ```
     git add .
@@ -135,33 +147,13 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     git push
     ```
 
-2. Install required dependencies:
-
-    ```
-    npm install
-    ```
-
-3. Bootstrap your account/region for CDK deployment:
-
-    ```
-    cdk bootstrap
-    ```
-
-4. Commit package-lock.json and cdk.context.json and push code to your CodeCommit repository (Do not push upstream to GitHub):
-
-    ```
-    git add package-lock.json cdk.context.json 
-    git commit -m 'add lock and ctx file' --no-verify
-    git push
-    ```
-    
-5. Synthesize the CDK application into deployment templates:
+4. Synthesize the CDK application into deployment templates:
 
     ```
     cdk synth
     ```
 
-6. Deploy the CDK application:
+5. Deploy the CDK application:
 
     ```
     cdk deploy
