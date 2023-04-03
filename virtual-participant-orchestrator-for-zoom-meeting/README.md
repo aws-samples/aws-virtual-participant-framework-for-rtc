@@ -149,10 +149,12 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
 4. Commit package-lock.json and cdk.context.json and push code to your CodeCommit repository (Do not push upstream to GitHub):
 
+    ```
     git add package-lock.json cdk.context.json 
     git commit -m 'add lock and ctx file' --no-verify
     git push
-
+    ```
+    
 5. Synthesize the CDK application into deployment templates:
 
     ```
