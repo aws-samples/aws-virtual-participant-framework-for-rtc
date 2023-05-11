@@ -1889,16 +1889,16 @@ index e270f52..b935e2a 100644
      <IntDir>$(Configuration)\</IntDir>
      <LinkIncremental>false</LinkIncremental>
      <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-+    <IncludePath>C:\opt\zoom-sdk-windows-5.11.1.6653\zoom-sdk-windows-5.11.1.6653\x64\h;$(IncludePath)</IncludePath>
-+    <LibraryPath>C:\opt\zoom-sdk-windows-5.11.1.6653\zoom-sdk-windows-5.11.1.6653\x64\lib;$(LibraryPath)</LibraryPath>
++    <IncludePath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\h;$(IncludePath)</IncludePath>
++    <LibraryPath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\lib;$(LibraryPath)</LibraryPath>
    </PropertyGroup>
    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
      <OutDir>..\..\bin\</OutDir>
      <IntDir>$(Configuration)\</IntDir>
      <LinkIncremental>false</LinkIncremental>
      <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-+    <IncludePath>C:\opt\zoom-sdk-windows-5.11.1.6653\zoom-sdk-windows-5.11.1.6653\x64\h;$(IncludePath)</IncludePath>
-+    <LibraryPath>C:\opt\zoom-sdk-windows-5.11.1.6653\zoom-sdk-windows-5.11.1.6653\x64\lib;$(LibraryPath)</LibraryPath>
++    <IncludePath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\h;$(IncludePath)</IncludePath>
++    <LibraryPath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\lib;$(LibraryPath)</LibraryPath>
    </PropertyGroup>
    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
      <ClCompile>
@@ -2210,52 +2210,3 @@ index 8c86583..bf2ed05 100644
 +#include <sstream>
 +#include <stdint.h>
 +#include "sdk_util.h"
-diff --git a/x64/h/meeting_service_interface.h b/x64/h/meeting_service_interface.h
-index 38972a9..34969ae 100644
---- a/x64/h/meeting_service_interface.h
-+++ b/x64/h/meeting_service_interface.h
-@@ -141,6 +141,7 @@ typedef struct tagJoinParam4WithoutLogin
- 	bool		   isDirectShareDesktop;///<Share the desktop directly or not. True indicates to Share.
- 	bool		   isVideoOff;///<Turn off the video of not. True indicates to turn off. In addition, this flag is affected by meeting attributes.
- 	bool		   isAudioOff;///<Turn off the audio or not. True indicates to turn off. In addition, this flag is affected by meeting attributes.
-+	const wchar_t* join_token;///<join token.
- }JoinParam4WithoutLogin;
- 
- /*! \struct tagJoinParam4NormalUser
-diff --git a/x64/h/rawdata/rawdata_share_source_helper_interface.h b/x64/h/rawdata/rawdata_share_source_helper_interface.h
-new file mode 100644
-index 0000000..889e59c
---- /dev/null
-+++ b/x64/h/rawdata/rawdata_share_source_helper_interface.h
-@@ -0,0 +1,30 @@
-+#ifndef _RAWDATA_SHARE_SOURCE_HELPER_INTERFACE_H_
-+#define _RAWDATA_SHARE_SOURCE_HELPER_INTERFACE_H_
-+#include "zoom_sdk_def.h"
-+
-+BEGIN_ZOOM_SDK_NAMESPACE
-+
-+class IZoomSDKShareSender
-+{
-+public:
-+	virtual ~IZoomSDKShareSender() {}
-+	virtual SDKError sendShareFrame(char* frameBuffer, int width, int height, int frameLength) = 0;
-+};
-+
-+class IZoomSDKShareSource
-+{
-+public:
-+	virtual ~IZoomSDKShareSource() {}
-+	virtual void onStartSend(IZoomSDKShareSender* pSender) = 0;
-+	virtual void onStopSend() = 0;
-+};
-+
-+class IZoomSDKShareSourceHelper
-+{
-+public:
-+	virtual ~IZoomSDKShareSourceHelper() {}
-+	virtual SDKError setExternalShareSource(IZoomSDKShareSource* pShareSource) = 0;
-+};
-+
-+END_ZOOM_SDK_NAMESPACE
-+#endif
-\ No newline at end of file

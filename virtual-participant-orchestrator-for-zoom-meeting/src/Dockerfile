@@ -83,7 +83,7 @@ RUN vcpkg\vcpkg install "aws-sdk-cpp[sns]" --recurse --triplet x64-windows
 RUN vcpkg\vcpkg integrate install
 
 # ===== Copy Windows Zoom SDK code =========================================================================
-COPY zoom-sdk-windows-5.11.1.6653 /opt/zoom-sdk-windows-5.11.1.6653
+COPY zoom-sdk-windows-5.12.8.10282 /opt/zoom-sdk-windows-5.12.8.10282
 
 # ===== Build Windows Zoom SDK code ========================================================================
 WORKDIR /opt/
@@ -107,7 +107,7 @@ RUN `
   # Cleanup
   && del /q vs_buildtools.exe
 
-COPY --from=builder C:\opt\zoom-sdk-windows-5.11.1.6653\x64\bin /opt/bin
+COPY --from=builder C:\opt\zoom-sdk-windows-5.12.8.10282\x64\bin /opt/bin
 COPY --from=builder C:\opt\amazon-kinesis-video-streams-producer-sdk-cpp /opt/amazon-kinesis-video-streams-producer-sdk-cpp
 
 # ===== Set required environment variables =================================================================
