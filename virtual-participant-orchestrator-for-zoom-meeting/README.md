@@ -77,14 +77,14 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
 ### Apply Zoom SDK Patch
 
-1. Download the `zoom-sdk-windows-5.11.1.6653.zip` code archive from the [Zoom App Marketplace](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/).
+1. Download the `zoom-sdk-windows-5.12.8.10282.zip` code archive from the [Zoom App Marketplace](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/).
 
-2. Unzip the code archive to the `src` directory, so there is a `src/zoom-sdk-windows-5.11.1.6653` path.
+2. Unzip the code archive to the `src` directory, so there is a `src/zoom-sdk-windows-5.12.8.10282` path.
 
 3. Apply the Zoom Windows SDK patch:
 
     ```
-    git apply -p1 --directory src/zoom-sdk-windows-5.11.1.6653 --verbose --reject --whitespace=fix src/zoom_sdk_demo_v2.patch
+    git apply -p1 --directory src/zoom-sdk-windows-5.12.8.10282 --verbose --reject --whitespace=fix src/zoom_sdk_demo_v2.patch
     ```
 
 ### Package CloudFormation Template
