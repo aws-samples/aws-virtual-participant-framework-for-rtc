@@ -140,6 +140,7 @@ Perform the following tasks in windows command prompt (make sure you have Git in
 
 	> Note: If you have vcpkg already installed, skip the following. If you do **NOT** already have vcpkg installed, run the following commands:
 	> 
+
 	```batch
 	git clone --depth 1 --branch 2023.02.24 https://github.com/Microsoft/vcpkg.git
 	call .\vcpkg\bootstrap-vcpkg.bat
