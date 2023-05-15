@@ -73,7 +73,7 @@ RUN setx /M PATH "%PATH%;C:\opt\amazon-kinesis-video-streams-producer-sdk-cpp\op
 
 # ===== Install vcpkg ======================================================================================
 WORKDIR /opt/
-RUN git clone https://github.com/Microsoft/vcpkg.git
+RUN git clone --depth 1 --branch 2023.02.24 https://github.com/Microsoft/vcpkg.git
 RUN call .\vcpkg\bootstrap-vcpkg.bat
 
 # ===== Install vcpkg packages =============================================================================
