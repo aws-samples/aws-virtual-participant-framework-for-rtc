@@ -187,7 +187,7 @@ Resources:
                 Version: !Ref CustomActionProviderVersion
               Configuration:
                 ImageId: !Ref LatestECSOptimizedAMI
-                InstanceType: t3.2xlarge
+                InstanceType: m5.2xlarge
                 Command: !Sub "Set-Location 'src'; dir; .\\build-and-publish-docker-image.ps1 -accountId ${AWS::AccountId} -region ${AWS::Region} -repositoryName ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepository}"
               InputArtifacts:
                 - Name: Source

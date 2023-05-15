@@ -4,8 +4,6 @@ node_modules
 
 ### CDK-specific ignores ###
 *.swp
-cdk.context.json
-package-lock.json
 yarn.lock
 .cdk.staging
 cdk.out
