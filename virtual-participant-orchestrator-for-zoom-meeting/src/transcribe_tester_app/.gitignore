@@ -138,3 +138,9 @@ dist
 *.zip
 .DS_Store
 *.tmp
+
+# AWS SAM
+.aws-sam/
+packaged.yaml
+samconfig.toml
+*.db

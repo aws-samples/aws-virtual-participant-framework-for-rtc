@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const { TranscribeStreamingClient, StartStreamTranscriptionCommand, StartStreamTranscriptionCommandInput } = require("@aws-sdk/client-transcribe-streaming");
+const { S3Client } =  require("@aws-sdk/client-s3");
 
 const { Worker } = require('worker_threads')
 const fs = require('fs');
@@ -9,7 +10,7 @@ const stream = require('stream');
 const util = require('util');
 const magic_term = require('terminal-kit').terminal;
 
-const REGION = process.env.REGION || 'us-west-2';
+const REGION = process.env.AWS_DEFAULT_REGION || 'us-east-1';
 const TEMP_FILE_PATH = process.env.TEMP_FILE_PATH || './raw_recordings/';
 const IS_CONTENT_REDACTION_ENABLED = (process.env.IS_CONTENT_REDACTION_ENABLED || "true") === "true";
 const TRANSCRIBE_LANGUAGE_CODE = process.env.TRANSCRIBE_LANGUAGE_CODE || 'en-US';
@@ -17,10 +18,24 @@ const CONTENT_REDACTION_TYPE = process.env.CONTENT_REDACTION_TYPE || 'PII';
 const PII_ENTITY_TYPES = process.env.PII_ENTITY_TYPES || 'ALL';
 const CUSTOM_VOCABULARY_NAME = process.env.CUSTOM_VOCABULARY_NAME || '';
 const TIMEOUT = 1000000;
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || '';
+const isLambda = !!process.env.LAMBDA_TASK_ROOT;
+
+const s3Client = new S3Client(region = REGION);
 
 let currentSpeaker = '';
 let currentTranscript = '';
 let currentFragment = '';
+let transcriptStr = "";
+
+const writeTranscriptToS3 = async function writeTranscriptToS3(bucket, meetingId) {
+  await s3Client.putObject({
+    Bucket: S3_BUCKET_NAME,
+    Key: meetingId + ".txt",
+    ContentType: 'binary',
+    Body: Buffer.from(transcriptStr, 'binary')
+  }).promise();
+}
 
 const updateUI = function updateUI(writeAsNewLine) {
   message = currentFragment + " " + currentSpeaker + ": " + currentTranscript;
@@ -85,6 +100,20 @@ const runKVSWorker = function (workerData, streamPipe) {
       //console.log(currentSpeaker + ": " + transcript.Transcript);
       currentTranscript = transcript.Transcript;
       updateUI(true);
+
+      if (result.IsPartial === false) {
+        let currentSpeaker = null;
+        for (let item of result.Alerernatives[0].Items) {
+          if (item.Speaker !== currentSpeaker) {
+            transcriptStr += item.Speaker + ": ";
+          }
+          transcriptStr += item.Content + (item.Type === 'punctuation' ? '' : ' ');
+        }
+        transcriptStr += '\n';
+        console.log(result.Alerernatives[0].Items[0].Speaker + ": " + transcript);
+        writeTranscriptToS3();
+      }
+
       //console.log(JSON.stringify(chunk));
       //writeTranscriptionSegment(chunk, meetingId);
     }
@@ -185,4 +214,14 @@ const go = async function (meetingId, streamName, lastFragment) {
   }
 }
 
-go(process.argv[2], process.argv[3], process.argv[4], undefined);
+exports.handler = async function (event, context) {
+  console.log("EVENT: \n" + JSON.stringify(event, null, 2));
+
+  let streamName = event.kvsPrefix + "-vpf-meeting-" + event.meetingId + "-" + event.vpfId;
+  await go(event.meetingId, streamName, null);
+}
+
+if (!isLambda) {
+  console.log("Starting not in Lambda...")
+  go(process.argv[2], process.argv[3], process.argv[4], undefined);
+}

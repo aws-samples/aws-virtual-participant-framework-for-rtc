@@ -89,12 +89,18 @@ const readKVS = async function(region, streamName, lastFragment) {
   const getDataCmd = new GetDataEndpointCommand({ APIName: 'GET_MEDIA', StreamName: streamName});
   const response = await kvClient.send(getDataCmd);
   console.log("received endpoint for stream:", response.DataEndpoint);
-  const mediaClient = new KinesisVideoMedia({region:region, endpoint:response.DataEndpoint});
+  const mediaClient = new KinesisVideoMedia({ region: region, endpoint: response.DataEndpoint });
   //var getMediaCmd = new GetMediaCommand({ StreamName:streamName, StartSelector: { StartSelectorType: 'NOW'}});
-  let fragmentSelector = { StreamName: streamName, StartSelector: { StartSelectorType: 'NOW' } };
-  console.log("Selector:" + util.inspect(fragmentSelector));
+  let fragmentSelector = {
+    StreamName: streamName,
+    StartSelector: {
+      StartSelectorType: 'NOW'
+    }
+  };
+  // console.log(fragmentSelector);
+  // console.log("Selector:" + util.inspect(fragmentSelector));
   if (lastFragment && lastFragment.length > 0) {
-    console.log('resumging after last fragment', lastFragment);
+    console.log('resuming after last fragment', lastFragment);
     fragmentSelector = {
       StreamName: streamName,    
       StartSelector: {
