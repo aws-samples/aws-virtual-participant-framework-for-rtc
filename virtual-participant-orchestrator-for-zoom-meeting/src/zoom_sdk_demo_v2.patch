@@ -484,7 +484,7 @@ index 4cce4d9..5c0a77c 100644
  
  void CustomizedUIRecordMgr::onCustomizedLocalRecordingSourceNotification(ZOOM_SDK_NAMESPACE::ICustomizedLocalRecordingLayoutHelper* layout_helper)
 diff --git a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
-index 0e4dd7d..598abff 100644
+index 0e4dd7d..5fd02fc 100644
 --- a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
 +++ b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
 @@ -3,6 +3,9 @@
@@ -493,7 +493,7 @@ index 0e4dd7d..598abff 100644
  #include "mess_info.h"
 +#include <codecvt>
 +#include "SNSService.h"
-+
++#include <map>
  
  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  //class CSDKLoginWithSSOUIGroup 
@@ -514,14 +514,12 @@ index 0e4dd7d..598abff 100644
  
  	if(MeetingNumber.size() > 0)
  	{
-@@ -243,51 +249,96 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
+@@ -243,53 +249,121 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
  
  void CSDKWithoutLoginStartJoinMeetingUIGroup::onMeetingStatusChanged(ZOOM_SDK_NAMESPACE::MeetingStatus status, int iResult)
  {
 +	//Todo: better handling of notification and m_bInMeeting to help orchestrator decide whether
 +	// 1/ bot has or is joining a meeting and is occupied, 2/ bot is free to be assigned 3/ unexpected error
-+	auto sns_topic_arn = std::getenv("SNS_TOPIC_ARN");
-+
  	switch (status)
  	{
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_RECONNECTING:
@@ -533,17 +531,17 @@ index 0e4dd7d..598abff 100644
  				pAppEvent->InitCustomizedUI();
  		}
 +	//	m_bInMeeting = false;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_RECONNECTING");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_RECONNECTING");
  		break;
 +
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_CONNECTING:
 +	//	m_bInMeeting = false;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_CONNECTING");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_CONNECTING");
 +		break;
 +
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_DISCONNECTING:
 +	//	m_bInMeeting = false;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_DISCONNECTING");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_DISCONNECTING");
  		break;
 +
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_ENDED:
@@ -560,7 +558,7 @@ index 0e4dd7d..598abff 100644
 +			m_parentFrame->SetCurrentPage(m_WithoutLoginStartJoinMeetingPage);
  		}
 +		m_bInMeeting = false;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_ENDED");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_ENDED");
  		break;
 +
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_FAILED:
@@ -580,7 +578,7 @@ index 0e4dd7d..598abff 100644
 +			m_parentFrame->ShowErrorMessage(szError);
  		}
 +		m_bInMeeting = false;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_FAILED");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_FAILED");
  		break;
 +
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_INMEETING:
@@ -593,43 +591,70 @@ index 0e4dd7d..598abff 100644
 +			m_parentFrame->GetAppEvent()->onShowLoggedInUI(Demo_Meeting_Join_Only);
  		}
 +		m_bInMeeting = true;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_INMEETING");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_INMEETING");
 +		break;
 +
 +	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_IN_WAITING_ROOM:
 +	//	m_bInMeeting = false;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_IN_WAITING_ROOM");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_IN_WAITING_ROOM");
 +		break;
 +
 +	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_WAITINGFORHOST:
 +	//	m_bInMeeting = false;
-+		PublishSNSMessage(sns_topic_arn, "MEETING_STATUS_WAITINGFORHOST");
++		PublishMeetingStatusChangedToSNS("MEETING_STATUS_WAITINGFORHOST");
 +		break;
 +
  	default:
  		break;
 +
-+	}
-+}
-+
-+void CSDKWithoutLoginStartJoinMeetingUIGroup::PublishSNSMessage(char* sns_topic_arn, char* message)
+ 	}
+ }
+ 
++void CSDKWithoutLoginStartJoinMeetingUIGroup::PublishMeetingStatusChangedToSNS(std::string status)
 +{
++	auto sns_topic_arn = std::getenv("SNS_TOPIC_ARN");
++	
 +	if (sns_topic_arn == NULL || strlen(sns_topic_arn) < 1)
 +	{
 +		std::cout << "SNS Topic ARN cannot be empty string or NULL" << std::endl;
 +		return;
- 	}
-+	if (message != NULL && strlen(message) < 1) {
++	}
++
++	if (status.empty()) {
 +		std::cout << "SNS message cannot be empty string or NULL" << std::endl;
 +		return;
 +	}
-+	std::shared_ptr<SNSService> sns = sns->instance();
-+	sns->Publish(sns_topic_arn, message);
 +
- }
- 
++	std::string message;
++	message += status;
++
++	std::map<std::string, std::string> message_attributes;
++	message_attributes["event_type"] = "MEETING_STATUS_CHANGE";
++	message_attributes["meeting_status"] = status;
++	
++	ZOOM_SDK_NAMESPACE::IMeetingService* meeting_service = SDKInterfaceWrap::GetInst().GetMeetingService();
++	if (meeting_service != NULL && meeting_service->GetMeetingInfo())
++	{ 
++		std::ostringstream meeting_number_ostream;
++		meeting_number_ostream << meeting_service->GetMeetingInfo()->GetMeetingNumber();
++		auto meeting_number = meeting_number_ostream.str();
++		message_attributes["meeting_number"] = meeting_number;
++
++		message += " for meeting number: " + meeting_number;
++	}
++	else 
++	{
++		message +=  " for unknown meeting number";
++	}
++
++	std::shared_ptr<SNSService> sns = sns->instance();
++	sns->Publish(sns_topic_arn, message, message_attributes);
++}
++
  //////////////////////////////////////////////////////////////////////////////////////////////
-@@ -562,12 +613,43 @@ void CSDKLoginUIMgr::InitWindow()
+ //class CSDKRestAPIUserUIGroup 
+ CSDKRestAPIUserUIGroup::CSDKRestAPIUserUIGroup()
+@@ -562,12 +636,43 @@ void CSDKLoginUIMgr::InitWindow()
  	m_restApi_login_page = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_RestAPI_Without_Login"));
  	m_only_join_page = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_Join_Meeting_Only"));
  
@@ -675,7 +700,7 @@ index 0e4dd7d..598abff 100644
  void CSDKLoginUIMgr::Notify(TNotifyUI& msg)
  {
  	if(msg.sType == _T("click"))
-@@ -684,7 +766,12 @@ void CSDKLoginUIMgr::SwitchToWaitingPage(const wchar_t* waiting_message, bool sh
+@@ -684,7 +789,12 @@ void CSDKLoginUIMgr::SwitchToWaitingPage(const wchar_t* waiting_message, bool sh
  void CSDKLoginUIMgr::ShowErrorMessage(const wchar_t* error_message)
  {
  	if (error_message)
@@ -689,7 +714,7 @@ index 0e4dd7d..598abff 100644
  }
  
  void CSDKLoginUIMgr::SwitchToPage(loginTabPage nPage)
-@@ -751,7 +838,7 @@ void CSDKLoginUIMgr::NotifyAuthDone()
+@@ -751,7 +861,7 @@ void CSDKLoginUIMgr::NotifyAuthDone()
  void CSDKLoginUIMgr::SwitchToPage(SwitchToLoginUIType type_)
  {
     if(SwitchToLoginUIType_AUTHDONE == type_)
@@ -698,7 +723,7 @@ index 0e4dd7d..598abff 100644
  }
  
  void CSDKLoginUIMgr::CleanUp()
-@@ -782,6 +869,7 @@ void CSDKLoginCBHandler::onLoginReturnWithReason(ZOOM_SDK_NAMESPACE::LOGINSTATUS
+@@ -782,6 +892,7 @@ void CSDKLoginCBHandler::onLoginReturnWithReason(ZOOM_SDK_NAMESPACE::LOGINSTATUS
  {
  	if (ZOOM_SDK_NAMESPACE::LOGIN_SUCCESS == ret)
  	{
@@ -706,7 +731,7 @@ index 0e4dd7d..598abff 100644
  		TCHAR szlog[MAX_PATH] = {0};
  		swprintf_s(szlog, MAX_PATH,_T("userName:%s\r\nloggin success"),pAccountInfo->GetDisplayName());
  		OutputDebugString(szlog);
-@@ -792,7 +880,7 @@ void CSDKLoginCBHandler::onLoginReturnWithReason(ZOOM_SDK_NAMESPACE::LOGINSTATUS
+@@ -792,7 +903,7 @@ void CSDKLoginCBHandler::onLoginReturnWithReason(ZOOM_SDK_NAMESPACE::LOGINSTATUS
  	}
  	if (ZOOM_SDK_NAMESPACE::LOGIN_FAILED == ret)
  	{
@@ -716,7 +741,7 @@ index 0e4dd7d..598abff 100644
  		{
  			m_parentFrame->GetAppEvent()->onLoginFailed();
 diff --git a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
-index 5e1c53f..cf3ed17 100644
+index 5e1c53f..e46f0e1 100644
 --- a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
 +++ b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
 @@ -6,6 +6,8 @@
@@ -751,7 +776,7 @@ index 5e1c53f..cf3ed17 100644
 -	bool m_bInMeeting;
 +
 +private:
-+	void PublishSNSMessage(char* sns_topic_arn, char* message);
++	void PublishMeetingStatusChangedToSNS(std::string status);
  };
  
  class CSDKRestAPIUserUIGroup : public CSDKRestAPIUserUIEvent
@@ -769,15 +794,16 @@ index 5e1c53f..cf3ed17 100644
  	UINT GetClassStyle() const { return UI_CLASSSTYLE_FRAME | CS_DBLCLKS ; };
 diff --git a/x64/demo/sdk_demo_v2/SNSService.cpp b/x64/demo/sdk_demo_v2/SNSService.cpp
 new file mode 100644
-index 0000000..c2eb070
+index 0000000..fc6ec99
 --- /dev/null
 +++ b/x64/demo/sdk_demo_v2/SNSService.cpp
-@@ -0,0 +1,92 @@
+@@ -0,0 +1,123 @@
 +// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 +// SPDX-License-Identifier: Apache-2.0
 +
 +#include "stdafx.h"
 +#include "SNSService.h"
++#include "sdk_demo_app.h"
 +
 +SNSService::SNSService() {
 +    sns = Aws::MakeShared<Aws::SNS::SNSClient>("SNS_ALLOCATION_TAG");
@@ -837,6 +863,36 @@ index 0000000..c2eb070
 +
 +    if (psms_out.IsSuccess())
 +    {
++        std::cout << "Message: '" << message << "' published successfully to SNS topic " << topic_arn << std::endl;
++        return true;
++    }
++    else
++    {
++        std::cout << "Error while publishing message to topic " << topic_arn << psms_out.GetError().GetMessage()
++            << std::endl;
++        return false;
++    }
++}
++
++bool SNSService::Publish(Aws::String topic_arn, Aws::String message, Aws::Map<Aws::String, Aws::String> attributes)
++{
++    Aws::SNS::Model::PublishRequest psms_req;
++    psms_req.SetMessage(message);
++    psms_req.SetTopicArn(topic_arn);
++
++    attributes["vpf_uid"] = g_demoApp.vpf_uid;
++
++    for (const auto& pair : attributes) {
++        Aws::SNS::Model::MessageAttributeValue attribute_value;
++        attribute_value.SetDataType("String");
++        attribute_value.SetStringValue(pair.second.c_str());
++        psms_req.AddMessageAttributes(pair.first, attribute_value);
++    }
++
++    auto psms_out = sns->Publish(psms_req);
++
++    if (psms_out.IsSuccess())
++    {
 +        std::cout << "Message: '" << message <<"' published successfully to SNS topic " << topic_arn << std::endl;
 +        return true;
 +    }
@@ -868,10 +924,10 @@ index 0000000..c2eb070
 \ No newline at end of file
 diff --git a/x64/demo/sdk_demo_v2/SNSService.h b/x64/demo/sdk_demo_v2/SNSService.h
 new file mode 100644
-index 0000000..7a25449
+index 0000000..e4d21af
 --- /dev/null
 +++ b/x64/demo/sdk_demo_v2/SNSService.h
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,38 @@
 +// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 +// SPDX-License-Identifier: Apache-2.0
 +
@@ -901,24 +957,28 @@ index 0000000..7a25449
 +
 +	std::shared_ptr<Aws::SNS::SNSClient> sns;
 +
-+	bool SNSService::CreateTopic(Aws::String topic_name, Aws::String& topic_arn);
++	bool CreateTopic(Aws::String topic_name, Aws::String& topic_arn);
 +	bool DeleteTopic(Aws::String topic_arn);
 +	bool SubscribeEndpoint(Aws::String topic_arn, Aws::String protocol, Aws::String endpoint);
 +	bool Publish(Aws::String topic_arn, Aws::String message);
++	bool Publish(Aws::String topic_arn, Aws::String message, Aws::Map<Aws::String, Aws::String> attributes);
++
 +private:
 +	SNSService();
 +};
 diff --git a/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp
 new file mode 100644
-index 0000000..bf960a6
+index 0000000..f3c15b8
 --- /dev/null
 +++ b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp
-@@ -0,0 +1,262 @@
+@@ -0,0 +1,330 @@
 +// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 +// SPDX-License-Identifier: Apache-2.0
 +
 +#include "stdafx.h"
 +#include "ZoomSDKAudioRawDataDelegate.h"
++#include <map>
++#include "SNSService.h"
 +
 +
 +using namespace std;
@@ -936,9 +996,15 @@ index 0000000..bf960a6
 +    std::ostringstream stream_name_ostream;
 +    stream_name_ostream << "zoom-meeting";
 +
++    //If meeting ID is missing passing empty to SNS is better than failing
 +    ZOOM_SDK_NAMESPACE::IMeetingService* meeting_service = SDKInterfaceWrap::GetInst().GetMeetingService();
 +    if (meeting_service != NULL && meeting_service->GetMeetingInfo())
-+        stream_name_ostream << '-' << meeting_service->GetMeetingInfo()->GetMeetingNumber();
++    {
++        std::ostringstream meeting_number_ostream;
++        meeting_number_ostream << meeting_service->GetMeetingInfo()->GetMeetingNumber();
++        meeting_number = meeting_number_ostream.str();
++        stream_name_ostream << '-' << meeting_number;
++    }
 +
 +    if (kvs_stream_suffix != NULL && strlen(kvs_stream_suffix) > 0)
 +        stream_name_ostream << '-' << kvs_stream_suffix;
@@ -946,19 +1012,42 @@ index 0000000..bf960a6
 +    //stream name must be less than 256 bits
 +    meeting_kvs_stream_name = stream_name_ostream.str().substr(0, 256);
 +
++    PublishVPFRecordingStatusChangedToSNS("VPF_RECORDING_STARTED");
++
 +    if(USE_MIXED_AUDIO)
 +    {
-+        setupGstPipeline(meeting_kvs_stream_name.c_str() , "kvs-mixedaudio-pipeline", mixedAudioData);
++        SetupGstPipeline(meeting_kvs_stream_name.c_str() , "kvs-mixedaudio-pipeline", mixedAudioData);
 +    }
 +    else
 +    {
-+        setupGstPipeline("zoom-meetings-demo-caller", "kvs-caller-pipeline", callerData);
-+        setupGstPipeline("zoom-meetings-demo-agent", "kvs-agent-pipeline", agentData);
-+
++        SetupGstPipeline("zoom-meetings-demo-caller", "kvs-caller-pipeline", callerData);
++        SetupGstPipeline("zoom-meetings-demo-agent", "kvs-agent-pipeline", agentData);
 +    }
 +}
 +
-+void ZoomSDKAudioRawDataDelegate::setupGstPipeline(const char * stream_name, const char * pipeline_name, GstCustomData& data)
++void ZoomSDKAudioRawDataDelegate::PublishVPFRecordingStatusChangedToSNS(std::string vpf_recording_status)
++{
++    auto sns_topic_arn = std::getenv("SNS_TOPIC_ARN");
++    if (sns_topic_arn == NULL || strlen(sns_topic_arn) < 1)
++    {
++        std::cout << "SNS Topic ARN cannot be empty string or NULL" << std::endl;
++        return;
++    }
++
++    auto message = vpf_recording_status + " and publishing to kvs stream: " + meeting_kvs_stream_name + " for Zoom meeting number: " + meeting_number;
++
++    std::map<std::string, std::string> message_attributes;
++    message_attributes["event_type"] = "VPF_RECORDING_STATUS_CHANGE";
++    message_attributes["vpf_recording_status"] = vpf_recording_status;
++    message_attributes["kvs_stream_name"] = meeting_kvs_stream_name;
++    message_attributes["meeting_number"] = meeting_number;
++
++    std::shared_ptr<SNSService> sns = sns->instance();
++    sns->Publish(sns_topic_arn, message, message_attributes);
++}
++
++
++void ZoomSDKAudioRawDataDelegate::SetupGstPipeline(const char * stream_name, const char * pipeline_name, GstCustomData& data)
 +{
 +    GstCaps* caps;
 +    GstAudioInfo info;
@@ -1065,7 +1154,6 @@ index 0000000..bf960a6
 +    /* Start playing the pipeline to capture audio */
 +    gst_element_set_state(data.pipeline, GST_STATE_PLAYING);
 +
-+    //todo: implement deallocation/memory cleanup
 +}
 +
 +void ZoomSDKAudioRawDataDelegate::onMixedAudioRawDataReceived(AudioRawData *data_)
@@ -1176,12 +1264,50 @@ index 0000000..bf960a6
 +    }
 +    msecond_counter += buffer->duration / GST_MSECOND;
 +}
++
++ZoomSDKAudioRawDataDelegate::~ZoomSDKAudioRawDataDelegate()
++{
++    PublishVPFRecordingStatusChangedToSNS("VPF_RECORDING_STOPPED");
++
++    if (USE_MIXED_AUDIO)
++    {
++        TearDownGstPipeline(mixedAudioData);
++    }
++    else
++    {
++        TearDownGstPipeline(callerData);
++        TearDownGstPipeline(agentData);
++    }
++}
++
++//Todo: implement deallocation/memory cleanup
++void ZoomSDKAudioRawDataDelegate::TearDownGstPipeline(GstCustomData data)
++{
++    /* First set pipeline to NULL */
++    /*
++    gst_element_set_state(data.pipeline, GST_STATE_NULL);
++    */
++
++   /* Then unref all the data elements */
++       /*Multiplexed Audio elements*/
++  //  GstElement* pipeline, * appsrc, * audio_queue1, * audiotestsrc, * audioconvert, * audioenc;
++
++    /*Sink element -> KVS Sink*/
++ //   GstElement* sink;
++
++    /* Dropping support for video for now */
++#ifdef ENABLE_VIDEO
++ //   GstElement* videotestsrc, * src_filter, * video_queue, * x264enc, * h264parse;
++#endif
++
++}
++
 diff --git a/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h
 new file mode 100644
-index 0000000..2d080eb
+index 0000000..7d16031
 --- /dev/null
 +++ b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,75 @@
 +// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 +// SPDX-License-Identifier: Apache-2.0
 +
@@ -1230,17 +1356,19 @@ index 0000000..2d080eb
 +class ZoomSDKAudioRawDataDelegate : public ZOOM_SDK_NAMESPACE::IZoomSDKAudioRawDataDelegate {
 +private:
 +    GstCustomData mixedAudioData;
-+
 +    GstCustomData callerData;
 +    GstCustomData agentData;
 +
 +private:
-+    void setupGstPipeline(const char* stream_name, const char* pipeline_name, GstCustomData& data);
++    void PublishVPFRecordingStatusChangedToSNS(std::string vpf_recording_status);
++    void SetupGstPipeline(const char* stream_name, const char* pipeline_name, GstCustomData& data);
 +    void onAudioRawDataReceivedForGstAppSrc(AudioRawData* data_, GstCustomData gstCustomData, boolean useMixedAudio);
 +    void injectKeyFramAndMetaData(GstBuffer*& buffer, GstCustomData data);
++    void TearDownGstPipeline(GstCustomData data);
 +
 +    char const* access_key, * secret_key, * aws_region;
 +    std::string meeting_kvs_stream_name;
++    std::string meeting_number;
 +
 +    std::atomic<gint64> msecond_counter;
 +    std::atomic<uint32_t> first_participant_id = 0;
@@ -1250,6 +1378,7 @@ index 0000000..2d080eb
 +
 +public:
 +    ZoomSDKAudioRawDataDelegate();
++    virtual ~ZoomSDKAudioRawDataDelegate();
 +    // Inherited via IZoomSDKAudioRawDataDelegate
 +    virtual void onMixedAudioRawDataReceived(AudioRawData* data_) override;
 +    virtual void onOneWayAudioRawDataReceived(AudioRawData* data_, uint32_t node_id) override;
@@ -1369,17 +1498,19 @@ index 0000000..d11d4bb
 +
 +} GUIOutputToConsole;
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_app.cpp b/x64/demo/sdk_demo_v2/sdk_demo_app.cpp
-index efc4485..294ca14 100644
+index efc4485..55740f6 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_app.cpp
 +++ b/x64/demo/sdk_demo_v2/sdk_demo_app.cpp
-@@ -2,10 +2,27 @@
+@@ -1,11 +1,34 @@
+ #include "stdafx.h"
  #include "sdk_demo_app.h"
  #include "display_cc_ui.h"
- 
++#include <random>
++
 +#ifdef ENABLE_ZOOM_DEBUG_CONSOLE
 +#include "gui_output_to_console.h"
 +#endif
-+
+ 
  CSDKDemoApp g_demoApp;
  
  void CSDKDemoApp::Run(HINSTANCE hInstance)
@@ -1394,13 +1525,18 @@ index efc4485..294ca14 100644
 +	}
 +#endif
 +
++	vpf_uid = GetRandomString(10);
++	CROW_LOG_INFO << "VPF UID: " << vpf_uid;
++
++	options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Warn;
 +	Aws::InitAPI(options);
++
 +	SetRoutesAndStartServer(3000);
 +
  	CPaintManagerUI::SetInstance(hInstance);
  
  	m_sdk_init_auth_ui = new CSDKInitAuthUIMgr();
-@@ -13,7 +30,7 @@ void CSDKDemoApp::Run(HINSTANCE hInstance)
+@@ -13,7 +36,7 @@ void CSDKDemoApp::Run(HINSTANCE hInstance)
  		return;
  
  	m_sdk_login_ui_mgr = new CSDKLoginUIMgr();
@@ -1409,7 +1545,7 @@ index efc4485..294ca14 100644
  		return;
  
  	m_sdk_init_auth_ui->SetEvent(this);
-@@ -34,27 +51,119 @@ void CSDKDemoApp::Run(HINSTANCE hInstance)
+@@ -34,27 +57,133 @@ void CSDKDemoApp::Run(HINSTANCE hInstance)
  	//#define WND_STYLE (WS_POPUPWINDOW | WS_CAPTION | WS_DLGFRAME | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
  	//p->Create(NULL, _T("test"), WND_STYLE, WS_EX_WINDOWEDGE|WS_EX_LAYERED);
  	//p->ShowWindow(true);
@@ -1423,7 +1559,7 @@ index efc4485..294ca14 100644
 +			CROW_LOG_INFO << "Response String: " << responseString;
 +			return responseString;
 +		});
- 
++
  
 +	// todo: move these somewhere cleaner
 +	CROW_ROUTE(crow_app, "/join")
@@ -1500,6 +1636,20 @@ index efc4485..294ca14 100644
 +				.run();
 +		}));
 +
++}
+ 
++Aws::String CSDKDemoApp::GetRandomString(int length)
++{
++	const std::string alpha_numeric_string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
++	std::random_device rd;
++	std::mt19937 generator(rd());
++	std::uniform_int_distribution<> distribution(0, alpha_numeric_string.size() - 1);
++	Aws::String result;
++	for (std::size_t i = 0; i < length; ++i) {
++		result += alpha_numeric_string[distribution(generator)];
++	}
++
++	return result;
  }
  
  void CSDKDemoApp::Stop()
@@ -1533,7 +1683,7 @@ index efc4485..294ca14 100644
  	}
  	if (m_sdk_join_meeting_for_login_user_ui_mgr)
  	{
-@@ -64,6 +173,7 @@ void CSDKDemoApp::Stop()
+@@ -64,6 +193,7 @@ void CSDKDemoApp::Stop()
  }
  
  CSDKDemoApp::CSDKDemoApp()
@@ -1541,7 +1691,7 @@ index efc4485..294ca14 100644
  {
  	m_sdk_init_auth_ui = NULL;
  	m_sdk_login_ui_mgr = NULL;
-@@ -72,6 +182,7 @@ CSDKDemoApp::CSDKDemoApp()
+@@ -72,6 +202,7 @@ CSDKDemoApp::CSDKDemoApp()
  	m_sdk_join_meeting_for_login_user_ui_mgr = NULL;
  	m_customizedMeetingUI = NULL;
  	m_more_menu_ui = NULL;
@@ -1549,7 +1699,7 @@ index efc4485..294ca14 100644
  }
  
  CSDKDemoApp::~CSDKDemoApp()
-@@ -116,35 +227,38 @@ void CSDKDemoApp::Cleanup()
+@@ -116,35 +247,38 @@ void CSDKDemoApp::Cleanup()
  		delete m_sdk_join_meeting_for_login_user_ui_mgr;
  		m_sdk_join_meeting_for_login_user_ui_mgr = NULL;
  	}
@@ -1596,7 +1746,7 @@ index efc4485..294ca14 100644
  
  		m_sdk_login_ui_mgr->ShowWindow(true);
  		ActiveWindowToTop(hwndUI);
-@@ -153,10 +267,10 @@ void CSDKDemoApp::onSwitchToLoginUI(SwitchToLoginUIType type_)
+@@ -153,10 +287,10 @@ void CSDKDemoApp::onSwitchToLoginUI(SwitchToLoginUIType type_)
  	if (m_sdk_settings_ui_mgr)
  	{
  		hwndUI = m_sdk_settings_ui_mgr->GetHWND();
@@ -1609,7 +1759,7 @@ index efc4485..294ca14 100644
  		}
  	}
  
-@@ -169,21 +283,21 @@ void CSDKDemoApp::onSwitchToLoginUI(SwitchToLoginUIType type_)
+@@ -169,21 +303,21 @@ void CSDKDemoApp::onSwitchToLoginUI(SwitchToLoginUIType type_)
  	switch (type_)
  	{
  	case SwitchToLoginUIType_AUTHDONE:
@@ -1641,7 +1791,7 @@ index efc4485..294ca14 100644
  	case SwitchToLoginUIType_MeetingEND:
  	case SwitchToLoginUIType_LOGINFAILED:
  	case SwitchToLoginUIType_MEETINGFAILED:
-@@ -196,7 +310,7 @@ void CSDKDemoApp::onSwitchToLoginUI(SwitchToLoginUIType type_)
+@@ -196,7 +330,7 @@ void CSDKDemoApp::onSwitchToLoginUI(SwitchToLoginUIType type_)
  void CSDKDemoApp::onShowLoggedInUI(LoggedIn_MeetingUI_type nType_)
  {
  	//first to delete the old instance if there is any
@@ -1650,7 +1800,7 @@ index efc4485..294ca14 100644
  	{
  		DestroyWindow(m_sdk_loggedIn_ui_mgr->GetHWND());
  		//delete m_sdk_loggedIn_ui_mgr;
-@@ -204,25 +318,25 @@ void CSDKDemoApp::onShowLoggedInUI(LoggedIn_MeetingUI_type nType_)
+@@ -204,25 +338,25 @@ void CSDKDemoApp::onShowLoggedInUI(LoggedIn_MeetingUI_type nType_)
  	}
  
  	m_sdk_loggedIn_ui_mgr = new CSDKLoggedInUIMgr();
@@ -1682,7 +1832,7 @@ index efc4485..294ca14 100644
  	{
  		if (Demo_Really_LoggedIn == nType_)
  		{
-@@ -233,37 +347,37 @@ void CSDKDemoApp::onShowLoggedInUI(LoggedIn_MeetingUI_type nType_)
+@@ -233,37 +367,37 @@ void CSDKDemoApp::onShowLoggedInUI(LoggedIn_MeetingUI_type nType_)
  }
  void CSDKDemoApp::onShowSettingsUI(SettingsUI_page nPage)
  {
@@ -1726,7 +1876,7 @@ index efc4485..294ca14 100644
  	m_sdk_join_meeting_for_login_user_ui_mgr->SetIcon(IDI_ICON_LOGO);
  	m_sdk_join_meeting_for_login_user_ui_mgr->ShowWindow(true);
  }
-@@ -284,25 +398,25 @@ void CSDKDemoApp::onLoginFailed()
+@@ -284,25 +418,25 @@ void CSDKDemoApp::onLoginFailed()
  
  void CSDKDemoApp::onJoinFailed()
  {
@@ -1759,7 +1909,7 @@ index efc4485..294ca14 100644
  				m_customizedMeetingUI->SetEvent(this);
  		}
  		else
-@@ -315,7 +429,7 @@ void CSDKDemoApp::InitCustomizedUI()
+@@ -315,7 +449,7 @@ void CSDKDemoApp::InitCustomizedUI()
  
  void CSDKDemoApp::ActivateCustomizedUI()
  {
@@ -1768,7 +1918,7 @@ index efc4485..294ca14 100644
  	{
  		m_customizedMeetingUI->ActivateUI();
  	}
-@@ -324,7 +438,7 @@ void CSDKDemoApp::ActivateCustomizedUI()
+@@ -324,7 +458,7 @@ void CSDKDemoApp::ActivateCustomizedUI()
  
  void CSDKDemoApp::onShowChatWindow()
  {
@@ -1777,7 +1927,7 @@ index efc4485..294ca14 100644
  	{
  		m_customizedMeetingUI->ShowHideChatWindow();
  	}
-@@ -332,7 +446,7 @@ void CSDKDemoApp::onShowChatWindow()
+@@ -332,7 +466,7 @@ void CSDKDemoApp::onShowChatWindow()
  
  void CSDKDemoApp::onShowCameraControlWindow()
  {
@@ -1786,7 +1936,7 @@ index efc4485..294ca14 100644
  	{
  		m_customizedMeetingUI->ShowHideCameraControlWindow();
  	}
-@@ -340,7 +454,7 @@ void CSDKDemoApp::onShowCameraControlWindow()
+@@ -340,7 +474,7 @@ void CSDKDemoApp::onShowCameraControlWindow()
  
  void CSDKDemoApp::onShowShareWindow()
  {
@@ -1795,7 +1945,7 @@ index efc4485..294ca14 100644
  	{
  		m_customizedMeetingUI->ShowShareWindow();
  	}
-@@ -348,7 +462,7 @@ void CSDKDemoApp::onShowShareWindow()
+@@ -348,7 +482,7 @@ void CSDKDemoApp::onShowShareWindow()
  
  void CSDKDemoApp::onShowGalleryViewWindow()
  {
@@ -1804,7 +1954,7 @@ index efc4485..294ca14 100644
  	{
  		m_customizedMeetingUI->ShowHideGalleryViewWindow();
  	}
-@@ -356,14 +470,14 @@ void CSDKDemoApp::onShowGalleryViewWindow()
+@@ -356,14 +490,14 @@ void CSDKDemoApp::onShowGalleryViewWindow()
  
  void CSDKDemoApp::onShowParticipantWindow()
  {
@@ -1822,7 +1972,7 @@ index efc4485..294ca14 100644
  		m_customizedMeetingUI->PageButtonClick(btnType);
  	}
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_app.h b/x64/demo/sdk_demo_v2/sdk_demo_app.h
-index c5c125b..e67d79f 100644
+index c5c125b..d44b727 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_app.h
 +++ b/x64/demo/sdk_demo_v2/sdk_demo_app.h
 @@ -9,6 +9,11 @@
@@ -1855,15 +2005,25 @@ index c5c125b..e67d79f 100644
  	virtual void onShowChatWindow();
  	virtual void onShowShareWindow();
  	virtual void onShowGalleryViewWindow();
-@@ -47,6 +52,11 @@ private:
+@@ -38,6 +43,7 @@ public:
+ public:
+ 
+ 	CSDKLoggedInUIMgr* GetLoggedInUIMgr() const;
++	Aws::String vpf_uid;
+ 
+ private:
+ 	CSDKInitAuthUIMgr* m_sdk_init_auth_ui;
+@@ -47,6 +53,13 @@ private:
  	CSDKJoinMeetingForLoginUserUIMgr* m_sdk_join_meeting_for_login_user_ui_mgr;
  	CCustomizeInMeetingUIMgr* m_customizedMeetingUI;
  	CMoreMenuUIMgr* m_more_menu_ui;
 +
-+	Aws::SDKOptions options;
 +	void SetRoutesAndStartServer(int port);
++	Aws::String GetRandomString(int length);
++
 +	std::thread crow_thread;
 +	crow::SimpleApp crow_app;
++	Aws::SDKOptions options;
  };
  
  extern CSDKDemoApp g_demoApp;
