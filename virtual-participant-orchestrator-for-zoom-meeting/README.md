@@ -57,25 +57,29 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
 3. From the CodeCommit console take note of the repository ARN from the "Repositories > Settings" side panel on the left.
 
-4. Create an IAM user with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** element:
+4. Create an IAM user with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** elements:
 
     ```json
     "Statement": [
         {
-            "Sid": "HandCraftedForVPF_0",
+            "Sid": "HandCraftedForVPF0",
             "Effect": "Allow",
             "Action": [
                 "kinesisvideo:PutMedia",
                 "kinesisvideo:GetDataEndpoint",
                 "kinesisvideo:DescribeStream",
-                "kinesisvideo:CreateStream"
+                "kinesisvideo:CreateStream",
+                "sns:Publish"
             ],
-            "Resource": "arn:aws:kinesisvideo:us-west-2:111111111111:stream/*/*"
+            "Resource": [
+                "arn:aws:kinesisvideo:us-west-2:111111111111:stream/*/*",
+                "arn:aws:sns:us-west-2:111111111111:*"
+            ]
         }
     ]
     ```
 
-    > Note: Please see [Controlling access to Kinesis Video Streams resources using IAM](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/how-iam.html) for more details.
+    > Note: Please see [Controlling access to Kinesis Video Streams resources using IAM](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/how-iam.html) and [Identity and access management in Amazon SNS](https://docs.aws.amazon.com/sns/latest/dg/security-iam.html) for more details.
 
 5. From IAM Console create access keys for the user ([Learn more](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)).
 
