@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const { TranscribeStreamingClient, StartStreamTranscriptionCommand, StartStreamTranscriptionCommandInput } = require("@aws-sdk/client-transcribe-streaming");
-const { S3Client } =  require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand } =  require("@aws-sdk/client-s3");
 
 const { Worker } = require('worker_threads')
 const fs = require('fs');
@@ -15,35 +15,56 @@ const TEMP_FILE_PATH = process.env.TEMP_FILE_PATH || './raw_recordings/';
 const IS_CONTENT_REDACTION_ENABLED = (process.env.IS_CONTENT_REDACTION_ENABLED || "true") === "true";
 const TRANSCRIBE_LANGUAGE_CODE = process.env.TRANSCRIBE_LANGUAGE_CODE || 'en-US';
 const CONTENT_REDACTION_TYPE = process.env.CONTENT_REDACTION_TYPE || 'PII';
-const PII_ENTITY_TYPES = process.env.PII_ENTITY_TYPES || 'ALL';
+const PII_ENTITY_TYPES = process.env.PII_ENTITY_TYPES || 'SSN';
 const CUSTOM_VOCABULARY_NAME = process.env.CUSTOM_VOCABULARY_NAME || '';
 const TIMEOUT = 1000000;
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || '';
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || '';  // 
 const isLambda = !!process.env.LAMBDA_TASK_ROOT;
 
-const s3Client = new S3Client(region = REGION);
+const s3Client = new S3Client({region:REGION});
 
+// should remove these from global variables
 let currentSpeaker = '';
 let currentTranscript = '';
-let currentFragment = '';
-let transcriptStr = "";
+let speechSegments = [];
 
-const writeTranscriptToS3 = async function writeTranscriptToS3(bucket, meetingId) {
-  await s3Client.putObject({
-    Bucket: S3_BUCKET_NAME,
-    Key: meetingId + ".txt",
-    ContentType: 'binary',
-    Body: Buffer.from(transcriptStr, 'binary')
-  }).promise();
+let currentFragment = '';
+let sessionId = '';
+let timeToStop = false;
+let stopTimer = undefined;
+
+const writeTranscriptToS3 = async function writeTranscriptToS3(meetingId, transcriptStr) {
+  
+  try {
+    console.log("Writing to s3");
+    //concurrent VPFs in a single meeting will have contentions
+    //subsequent VPF joining the meeting overwrites s3 file
+    //TODO: based on lambda context and or VPF-uid handle writes to s3 differently
+
+    const command = new PutObjectCommand({
+      Bucket:S3_BUCKET_NAME,
+      Key: meetingId + ".jsonl",
+      Body: Buffer.from(transcriptStr, 'binary'),
+    });
+    
+    const response = await s3Client.send(command);
+    console.log(response);
+
+  } catch(error) {
+    console.error("Error writing to s3");
+    console.error(error);
+  }
+  
+
 }
 
 const updateUI = function updateUI(writeAsNewLine) {
-  message = currentFragment + " " + currentSpeaker + ": " + currentTranscript;
+  /*message = currentFragment + " " + currentSpeaker + ": " + currentTranscript;
   if(writeAsNewLine){
     magic_term('\n' + message );
   }else{
     magic_term(message);
-  }
+  }*/
 }
 
 //returns a promise, so we can await it
@@ -89,43 +110,67 @@ const runKVSWorker = function (workerData, streamPipe) {
  const readTranscripts = async function (tsStream, meetingId) {
   try {
     for await (const chunk of tsStream) {
-      // console.log(JSON.stringify(chunk));
-      const result = chunk.TranscriptEvent.Transcript.Results[0];
-      if (!result) {
-        currentTranscript = '';
-        continue;
-      }
-      const transcript = result.Alternatives[0];
-      if (!transcript.Transcript) continue;
-      //console.log(currentSpeaker + ": " + transcript.Transcript);
-      currentTranscript = transcript.Transcript;
-      updateUI(true);
+      try {
+        const result = chunk.TranscriptEvent.Transcript.Results[0]; 
+        //updateUI(true);
+        if (result && result.IsPartial === false) {
+          const items = result.Alternatives[0].Items;
 
-      if (result.IsPartial === false) {
-        let currentSpeaker = null;
-        for (let item of result.Alerernatives[0].Items) {
-          if (item.Speaker !== currentSpeaker) {
-            transcriptStr += item.Speaker + ": ";
+          let currentSpeaker = null;
+          let currentSpeechSegment = {
+            Speaker: "",
+            Transcript: "",
+            Date: new Date().toISOString()
           }
-          transcriptStr += item.Content + (item.Type === 'punctuation' ? '' : ' ');
-        }
-        transcriptStr += '\n';
-        console.log(result.Alerernatives[0].Items[0].Speaker + ": " + transcript);
-        writeTranscriptToS3();
-      }
+          for (let item of items) {
+            if(item.Type){
+              if(item.Type !== 'punctuation'){
+                if (item.Speaker !== currentSpeaker) {
+                  // console.log("current speaker ---> " + currentSpeaker);
+                  // console.log(util.inspect(items));
 
-      //console.log(JSON.stringify(chunk));
-      //writeTranscriptionSegment(chunk, meetingId);
+                  currentSpeaker = item.Speaker;
+                  currentSpeechSegment = {
+                    Speaker: currentSpeaker,
+                    Transcript: "",
+                    Date: new Date().toISOString()
+                  }
+                  speechSegments.push(currentSpeechSegment);
+                } 
+                currentSpeechSegment.Transcript += ' ' + item.Content; 
+              } else { 
+                //don't add space before punctuation
+                currentSpeechSegment.Transcript += item.Content; 
+              }
+           }
+          }
+
+          let transcriptStr = "";
+
+          for (let segment of speechSegments){
+            transcriptStr += JSON.stringify(segment) + "\n";
+          }
+
+          console.log("=== Segments ===");
+          console.log(JSON.stringify(transcriptStr));
+            
+          writeTranscriptToS3(meetingId, transcriptStr);
+        }
+      } catch(err){
+        console.error("Error writing transcription chunk.", JSON.stringify(err));
+        console.log(err);
+      }
     }
-  }
-  catch(error) {
+  } catch(error) {
     console.error("Error writing transcription segment.", JSON.stringify(error));
+    console.log(error);
   } finally {
     // Do nothing for now
   }
 }
 
 const go = async function (meetingId, streamName, lastFragment) { 
+  speechSegments = [];
  
   let firstChunkToTranscribe = true;
   const passthroughStream = new stream.PassThrough({ highWaterMark: 128 });
@@ -161,8 +206,9 @@ const go = async function (meetingId, streamName, lastFragment) {
     LanguageCode: TRANSCRIBE_LANGUAGE_CODE,
     MediaEncoding: "pcm",
     MediaSampleRateHertz: 32000,
-    //NumberOfChannels: 2,
-    //EnableChannelIdentification: true,
+  //  NumberOfChannels: 2,
+  //  EnableChannelIdentification: true,
+    ShowSpeakerLabel: true,
     AudioStream: audioStream(),
   }
   
@@ -217,8 +263,32 @@ const go = async function (meetingId, streamName, lastFragment) {
 exports.handler = async function (event, context) {
   console.log("EVENT: \n" + JSON.stringify(event, null, 2));
 
-  let streamName = event.kvsPrefix + "-vpf-meeting-" + event.meetingId + "-" + event.vpfId;
-  await go(event.meetingId, streamName, null);
+  // deal with concurrent lambdas better
+  speechSegments = [];
+  let event_type = "";
+  let vpf_recording_status = "";
+  let kvs_stream_name = "";
+  let vpf_uid = "";
+  let meeting_number = "";
+
+  if(event.Records.length > 0) {
+    let record = event.Records[0];
+    try{
+      if(record.Sns.MessageAttributes.vpf_recording_status.Value === "VPF_RECORDING_STARTED") {
+        kvs_stream_name = record.Sns.MessageAttributes.kvs_stream_name.Value;
+        vpf_uid = record.Sns.MessageAttributes.vpf_uid.Value;
+        meeting_number = record.Sns.MessageAttributes.meeting_number.Value;
+        
+        await go(meeting_number, kvs_stream_name, null);
+      } else {
+        console.log("wrong VPF_RECORDING event state received")
+      }
+    }catch (error){
+        console.log("wrong event was sent" + JSON.stringify(error))
+    }
+  }
+
+
 }
 
 if (!isLambda) {

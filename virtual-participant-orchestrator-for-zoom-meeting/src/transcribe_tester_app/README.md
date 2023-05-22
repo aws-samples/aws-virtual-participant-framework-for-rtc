@@ -35,7 +35,7 @@ npm install node -g
 npm install
 ```
 
-### Running the code
+### Running the live transcriber code
 To run execute: `node zoom-consumer.js <zoom-meeting-number> <stream-name>`
 
 e.g.
@@ -44,3 +44,11 @@ e.g.
 node zoom-consumer.js 1111222233 zoom-meeting-1111222233-example-stream
 ```
 > Note you can look up the Amazon Kinesis Stream *stream-name* above from AWS Console or using the AWS CLI.  The stream-name prefix is hardcoded as "zoom-meeting-". This is followed by the 10 digit <zoom-meeting-number> and ending with a suffix that was passed as an environment variable to the Zoom Meeting Windows SDK application `KVS_STREAM_SUFFIX` (see [README](../README.md#set-environment-variables)).
+
+### Runinng S3 transcription viewer
+To run execute: `stream-transcription-from-s3.js <s3-bucket-name> <meeting-number>.txt <optional-number-of-lines>`
+
+e.g.
+```
+ node stream-transcription-from-s3.js zoom-transcript--test-bucket 82058782238.txt 5000
+```
