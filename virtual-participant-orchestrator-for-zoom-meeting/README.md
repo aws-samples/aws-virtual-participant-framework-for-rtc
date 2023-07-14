@@ -61,36 +61,22 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
    set CODECOMMIT_REPO_NAME=MyVPFRepo
    aws codecommit create-repository --repository-name %CODECOMMIT_REPO_NAME% --repository-description "My VPF repository"
    ```
-
-2. Change CodeCommit repo's default branch to `main`
-
-    On Linux:
-
-    ```shell
-    aws codecommit update-default-branch --repository-name $CODECOMMIT_REPO_NAME --default-branch-name main
-    ```
-
-    On Windows:
-
-    ```batch
-    aws codecommit update-default-branch --repository-name %CODECOMMIT_REPO_NAME% --default-branch-name main
-    ```
    
-3. Clone CodeCommit repo (see repository on AWS Console and [docs](https://docs.aws.amazon.com/codecommit/latest/userguide/repositories.html) for instructions) to a local directory that is outside the path of the directories cloned from GitHub.
+2. Clone CodeCommit repo (see repository on AWS Console and [docs](https://docs.aws.amazon.com/codecommit/latest/userguide/repositories.html) for instructions) to a local directory that is outside the path of the directories cloned from GitHub.
 
     > Note: The CodeCommit repository will include proprietary and licensed Zoom Windows SDK files. Changes commited to the CodeCommit repo **should not** be pushed upstream to the OSS GitHub repository. If you are interested in contributing to the source that links to Zoom Window SDK libraries, please create a GitHub issue or reach out to the maintainers for instructions.
 
-4. Ensure you are on the **main** branch (not **master**)
+3. `cd` into your new checked out directory and ensure you are on the **main** branch (not **master**)
 
     ```shell
-    git checkout main
+    git checkout -b main
     ```
     
-5. Copy the contents of the [virtual-participant-orchestrator-for-zoom-meeting/](../virtual-participant-orchestrator-for-zoom-meeting/) subproject - not the root directory of the GitHub repo - to the local directory where the CodeCommit repo was cloned above.
+4. Copy the contents of the [virtual-participant-orchestrator-for-zoom-meeting/](../virtual-participant-orchestrator-for-zoom-meeting/) subproject - not the root directory of the GitHub repo - to the local directory where the CodeCommit repo was cloned above.
 
-6. From the CodeCommit console take note of the repository ARN from the "Repositories > Settings" side panel on the left.
+5. From the CodeCommit console take note of the repository ARN from the "Repositories > Settings" side panel on the left.
 
-7. Create an IAM user with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** elements with the appropriate values:
+6. Create an IAM user with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** elements with the appropriate values:
 
     ```json
     "Statement": [
@@ -114,11 +100,11 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
     > Note: This is not the same IAM User as the one for the administrator performing deployments via the AWS CLI. This new IAM User policy follows least privillage principal and is assigned in runtime to Amazon ECS tasks that connect to Zoom as a virtual participant. Please see [Controlling access to Kinesis Video Streams resources using IAM](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/how-iam.html) and [Identity and access management in Amazon SNS](https://docs.aws.amazon.com/sns/latest/dg/security-iam.html) for more details.
 
-8. From IAM Console create access keys for the user ([Learn more](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)).
+7. From IAM Console create access keys for the user ([Learn more](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)).
 
     > Note: Do not download .csv file. Instead keep the browser tab open until you record the **"access key"** and **"secret access key"** securely in AWS Secret Manager in the next step. In case you accidentally closed this tab, simply create a new accessss key and make the old one inactive.
 
-9. Create two secrets in AWS Secrets Manager named `zoomsecret` and `usersecret`.
+8. Create two secrets in AWS Secrets Manager named `zoomsecret` and `usersecret`.
 
     The secret `usersecret` plaintext value should use the following format:
 
@@ -132,7 +118,7 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     {"ZOOM_APP_KEY":"<Zoom_app_SDK_Key_or_Client_ID>","ZOOM_APP_SECRET":"<Zoom_app_SDK_Secret_or_Client_Secret"}
     ```
 
-10. Update `cdk.json` with the following updated attributes:
+9. Update `cdk.json` with the following updated attributes:
 
     * `account`
     * `region`
@@ -220,13 +206,27 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     git push -u origin main
     ```
 
-4. Synthesize the CDK application into deployment templates:
+4. Change CodeCommit repo's default branch to `main`
+
+    On Linux:
+
+    ```shell
+    aws codecommit update-default-branch --repository-name $CODECOMMIT_REPO_NAME --default-branch-name main
+    ```
+
+    On Windows:
+
+    ```batch
+    aws codecommit update-default-branch --repository-name %CODECOMMIT_REPO_NAME% --default-branch-name main
+    ```
+    
+5. Synthesize the CDK application into deployment templates:
 
     ```shell
     cdk synth
     ```
 
-5. Deploy the CDK application:
+6. Deploy the CDK application:
 
     ```shell
     cdk deploy
