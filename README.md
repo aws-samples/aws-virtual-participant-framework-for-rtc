@@ -1,6 +1,6 @@
-# AWS Virtual Participant Framework for RTC 
+# Virtual Participant Framework for RTC on AWS
 
-This is an umbrella project for building AI powered virtual participants for Real-Time Communication (RTC) services like Zoom. This repository is under active development. 
+This is a sample solutions umbrella project for building AI powered virtual participants for Real-Time Communication (RTC) services like Zoom. This repository is under development.
 
 ## Project Directory
 * [Virtual Participant Orcestrator for Zoom Meeting](virtual-participant-orchestrator-for-zoom-meeting/README.md) [Ready for dev/test]
