@@ -16,25 +16,22 @@ This virtual participant orchestrator for Zoom Meeting is developed by AWS Proto
 
 ## Important
 
-* As an AWS best practice, grant this code least privilege, or only the
-  permissions required to perform a task. For more information, see
-  [Grant least privilege](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege)
-  in the *AWS Identity and Access Management User Guide*.
-* This code has not been tested in all AWS Regions. Some AWS services are
-  available only in specific AWS Regions. For more information, see the
-  [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)
-  on the AWS website.
-* Running this code might result in charges to your AWS account.
-
+* As an AWS best practice, follow the principle of least privilege, and only grant permissions required to perform a task in any AWS account that is shared with other users, holding sensitive data, and/or tied to a production system. For more information, see [Grant least privilege](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege) in the *AWS Identity and Access Management User Guide*. This sample solution is intended for sandbox dev/test environments and requires the AWS account user to have `AdministratorAccess` privillage.
+* The solution deployment has not been tested in all AWS Regions, only us-east-1. Some dependant AWS services are available only in specific AWS Regions. For more information, see the [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) on the AWS website.  This sample solution is expected to function in any AWS Region where Amazon Kinesis Video Stream is available.
+* Running this code will likely result in charges to your AWS account.
+* If you are new to AWS, first follow [this tutorial](https://aws.amazon.com/getting-started/guides/setup-environment/) to get started.
+  
 ## Setup
 
 ### Install Prerequisites
 
 * An AWS test account with no access to sensitive or production data
-* Ability to create an AWS IAM User, attach policies, and create access keys
+* Ability to create an AWS IAM User, attach policies, and create access keys 
 * [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 * [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
 * [Instal CDK CLI](https://docs.aws.amazon.com/cdk/v2/guide/cli.html)
+
+  > Note: The AWS IAM user that performs actions via the AWS CLI **MUST have** `AdministratorAccess` priviledge for the account. You cannot proceed with this sample solution without that managed policy applied to the IAM User that connects to you AWS account via the CLI. It is strongly advised **NOT to use** the AWS account's `root` user to perform actions via the AWS CLI or API. Instead create a new IAM User with administrator access by following [Getting started with IAM Identity Center](https://docs.aws.amazon.com/singlesignon/latest/userguide/getting-started.html).
 
 ### Get Developer Keys from Zoom
 
@@ -43,21 +40,43 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 1. Login to [Zoom App Marketplace](https://marketplace.zoom.us/) (Use your Zoom login - free accounts work!)
 2. From the "Develop" drop-down choose "Build App"
 3. From the options available "Create" a "Meeting SDK" app type and follow the instructions
-4. In the resulting screen, click on "App Credential" from the sidebar to make note of **"SDK Key"** and **"SDK Secret"**
+4. In the resulting screen, click on "App Credential" from the sidebar to make note of **"Client ID"** and **"Client Secret"**
 
 > Note: Leave browser tab open. Later you will need to download the Windows SDK from this screen using the "Download" option on the sidebar.
 
 ### Create Repository and Secrets for CDK Deployment
 
-1. Create a new AWS CodeCommit repository, and clone it to a local directory that is outside the path of the directories cloned from GitHub.
+1. Create a new AWS CodeCommit repository, and change default branch to `main`
+
+   Example on linux (replace `MyVPFRepoName` and description):
+
+   ```shell
+   export CODECOMMIT_REPO_NAME=MyVPFRepo
+   aws codecommit create-repository --repository-name $CODECOMMIT_REPO_NAME --repository-description "My VPF repository"
+   ```
+
+   Example on windows (replace `MyVPFRepoName` and description):
+
+   ```batch
+   set CODECOMMIT_REPO_NAME=MyVPFRepo
+   aws codecommit create-repository --repository-name %CODECOMMIT_REPO_NAME% --repository-description "My VPF repository"
+   ```
+   
+2. Clone CodeCommit repo (see repository on AWS Console and [docs](https://docs.aws.amazon.com/codecommit/latest/userguide/repositories.html) for instructions) to a local directory that is outside the path of the directories cloned from GitHub.
 
     > Note: The CodeCommit repository will include proprietary and licensed Zoom Windows SDK files. Changes commited to the CodeCommit repo **should not** be pushed upstream to the OSS GitHub repository. If you are interested in contributing to the source that links to Zoom Window SDK libraries, please create a GitHub issue or reach out to the maintainers for instructions.
 
-2. Copy the contents of the [virtual-participant-orchestrator-for-zoom-meeting/](../virtual-participant-orchestrator-for-zoom-meeting/) subproject - not the root directory of the GitHub repo - to the local directory where the CodeCommit repo was cloned above.
+3. `cd` into your new checked out directory and ensure you are on the **main** branch (not **master**)
 
-3. From the CodeCommit console take note of the repository ARN from the "Repositories > Settings" side panel on the left.
+    ```shell
+    git checkout -b main
+    ```
+    
+4. Copy the contents of the [virtual-participant-orchestrator-for-zoom-meeting/](../virtual-participant-orchestrator-for-zoom-meeting/) subproject - not the root directory of the GitHub repo - to the local directory where the CodeCommit repo was cloned above.
 
-4. Create an IAM user with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** elements:
+5. From the CodeCommit console take note of the repository ARN from the "Repositories > Settings" side panel on the left.
+
+6. Create a new IAM User (eg. vpf_user) with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** elements with the appropriate values:
 
     ```json
     "Statement": [
@@ -72,34 +91,34 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
                 "sns:Publish"
             ],
             "Resource": [
-                "arn:aws:kinesisvideo:us-west-2:111111111111:stream/*/*",
-                "arn:aws:sns:us-west-2:111111111111:*"
+                "arn:aws:kinesisvideo:us-east-1:111111111111:stream/*/*",
+                "arn:aws:sns:us-east-1:111111111111:*"
             ]
         }
     ]
     ```
 
-    > Note: Please see [Controlling access to Kinesis Video Streams resources using IAM](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/how-iam.html) and [Identity and access management in Amazon SNS](https://docs.aws.amazon.com/sns/latest/dg/security-iam.html) for more details.
+    > Note: This is not the same IAM User as the one for the administrator performing deployments via the AWS CLI. This new IAM User policy follows least privillage principal and is assigned in runtime to Amazon ECS tasks that connect to Zoom as a virtual participant. Please see [Controlling access to Kinesis Video Streams resources using IAM](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/how-iam.html) and [Identity and access management in Amazon SNS](https://docs.aws.amazon.com/sns/latest/dg/security-iam.html) for more details.
 
-5. From IAM Console create access keys for the user ([Learn more](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)).
+7. From IAM Console create access keys for the user ([Learn more](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)).
 
     > Note: Do not download .csv file. Instead keep the browser tab open until you record the **"access key"** and **"secret access key"** securely in AWS Secret Manager in the next step. In case you accidentally closed this tab, simply create a new accessss key and make the old one inactive.
 
-6. Create two secrets in AWS Secrets Manager named `zoomsecret` and `usersecret`.
+8. Create two secrets in AWS Secrets Manager named `zoomsecret` and `usersecret`.
 
     The secret `usersecret` plaintext value should use the following format:
 
     ```json
-    {"AWS_ACCESS_KEY_ID":"<above_IAM_User_access_key","AWS_SECRET_ACCESS_KEY":"above_IAM_User_secret_key"}
+    {"AWS_ACCESS_KEY_ID":"<above_IAM_User_Access_Key>","AWS_SECRET_ACCESS_KEY":"<above_IAM_User_Secret_Access_Key>"}
     ```
 
     The secret `zoomsecret` plaintext value should use the following format:
 
     ```json
-    {"ZOOM_APP_KEY":"<Zoom_app_SDK_Key_or_Client_ID>","ZOOM_APP_SECRET":"<Zoom_app_SDK_Secret_or_Client_Secret"}
+    {"ZOOM_APP_KEY":"<Zoom_app_Client_ID_or_SDK_Key>","ZOOM_APP_SECRET":"<Zoom_app_Client_Secret_or_SDK_Secret>"}
     ```
 
-7. Update `cdk.json` with the following updated attributes:
+9. Update `cdk.json` with the following updated attributes:
 
     * `account`
     * `region`
@@ -128,13 +147,13 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     Example on linux (replace account # and region):
 
     ```shell
-    export CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-west-2
+    export CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-east-1
     ```
 
     Example on Windows (replace account # and region):
 
     ```batch
-    set CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-west-2
+    set CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-east-1
     ```
 
     b) Create bucket:
@@ -184,7 +203,7 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     ```shell
     git add .
     git commit -m 'init'
-    git push
+    git push -u origin main
     ```
 
 4. Synthesize the CDK application into deployment templates:
@@ -198,6 +217,15 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     ```shell
     cdk deploy
     ```
+___
+🟩 The `cdk deploy` task completes in less than 5 minutes. However, the overall deployment takes about **2️⃣ hours** to complete due to the long Windows container image build cycle. If successful, you should see a container image tagged as *latest* in an Amazon ECR repository named **zoom-virtual-participant-windows**. You must wait for this image to appear in the ECR repo before proceeding further. To track deployment progress you can look at the infrastructure as code deployment pipelines in AWS CodePipeline generated by CDK. 
+___
+🟥 If container image in ECR repository does not show up well beyond 2 hours, log into AWS console using the admin user and:
+1. Check both **CDKPipeline** and **windows-container-cicd-pipeline** pipelines are green in CodePipeline. Then,
+2. Check the status latest execution of the **ec2-codepipeline-builders-build-flow** state machine in AWS StepFunction. And finally,
+3. Inspect the windows build and container image generation build logs in the latest AWS CloudWatch log stream under the log group beggining with **/aws/ssm/PipelineAppStage-CodePipelineCustomActionStack-RunBuildJobOnEc2Instance-**
+4. To re-attempt a new deployment you must first follow steps 2, 3, and 4 in [Clean up](#clean-up)
+___
 
 ### Run Virtual Participant Demo
 
@@ -254,11 +282,19 @@ To cleanup complete these tasks:
     }
     ```
 
-2. Remove the CDK stack with the `cdk destroy` command.
+2. Remove the CDK stack with the `cdk destroy` command
+
+___
+🟥 If `cdk deploy` fails, you must delete the AWS CloudFormation stacks manually in the following sequence (most recent to oldest) starting deletion of one stack only after the previous stack is successfully deleted: _1/_ **PipelineAppStage-PipelineAppStack** _2/_ **PipelineAppStage-WindowsContainerPipelineStack** _3/_ **PipelineAppStage-CodePipelineCustomActionStack** _4/_ **ZoomMeetingBotCdkStack** _5/_ **CDKToolkit**. 
+
+If you accidentally hit delete on all the stacks same time, or did not follow the one step process above, the CloudFormation stacks enter a bad state. This prevents some of stacks from being deleted. Deleting stacks out of sequence causes an IAM Role which stacks depend on to be disposed prematurely. To resolve, first manually re-create the IAM role: `cdk-hnb659fds-cfn-exec-role-<aws_acct_number>-<aws_region>` (replacing aws account number and region). Then provide assume rights to CloudFormation via the role's "Trust relationships" tab in the AWS IAM console Role view. Then assign `AdministratorAccess` to the role in console view's "Permissions" tab. Finally delete the stacks following the remaining sequence mentioned above.
+____
+
 3. Cleanup the s3 bucket and remove it
-4. Remove secrets stored in AWS Secret Manager
-5. Delete the IAM user with Amazon KVS and Amazon SNS access policy
-6. Delete AWS CodeCommit repository
+4. Delete AWS CodeCommit repository
+5. Remove secrets stored in AWS Secret Manager
+6. Delete the IAM user with Amazon KVS and Amazon SNS access policy
+
 
 ## Credits
 
