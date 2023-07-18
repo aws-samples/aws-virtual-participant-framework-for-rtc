@@ -9,6 +9,7 @@ ENV DOCKER_BUILD=true
 SHELL ["cmd", "/S", "/C"]
 
 # ================= Install Chocolately ====================================================================
+ENV chocolateyVersion=1.4.0
 RUN @powershell iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
 
 # ================= Install Git ============================================================================
