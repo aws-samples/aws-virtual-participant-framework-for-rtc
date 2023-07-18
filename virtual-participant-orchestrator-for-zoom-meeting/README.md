@@ -16,10 +16,10 @@ This virtual participant orchestrator for Zoom Meeting is developed by AWS Proto
 
 ## Important
 
-* As an AWS best practice, follow the principle of least privilege, and only grant permissions required to perform a task in any shared AWS account, one holding sensitive data or tied to a production system. For more information, see [Grant least privilege](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege) in the *AWS Identity and Access Management User Guide*. This sample solution in its current form is intended for sandbox dev/test environments and requires the AWS CLI user to have `AdministratorAccess`.
-* This code has not been tested in all AWS Regions, only us-east-1. Some dependant AWS services are available only in specific AWS Regions. For more information, see the [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) on the AWS website.  This sample solution is expected to function in any AWS Region where Amazon Kinesis Video Stream is available.
+* As an AWS best practice, follow the principle of least privilege, and only grant permissions required to perform a task in any AWS account that is shared with other users, holding sensitive data, and/or tied to a production system. For more information, see [Grant least privilege](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege) in the *AWS Identity and Access Management User Guide*. This sample solution is intended for sandbox dev/test environments and requires the AWS account user to have `AdministratorAccess` privillage.
+* The solution deployment has not been tested in all AWS Regions, only us-east-1. Some dependant AWS services are available only in specific AWS Regions. For more information, see the [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) on the AWS website.  This sample solution is expected to function in any AWS Region where Amazon Kinesis Video Stream is available.
 * Running this code will likely result in charges to your AWS account.
-* If you are new to AWS, first follow [this tutorial](https://aws.amazon.com/getting-started/guides/setup-environment/) to get started with your AWS Account
+* If you are new to AWS, first follow [this tutorial](https://aws.amazon.com/getting-started/guides/setup-environment/) to get started.
   
 ## Setup
 
@@ -40,7 +40,7 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 1. Login to [Zoom App Marketplace](https://marketplace.zoom.us/) (Use your Zoom login - free accounts work!)
 2. From the "Develop" drop-down choose "Build App"
 3. From the options available "Create" a "Meeting SDK" app type and follow the instructions
-4. In the resulting screen, click on "App Credential" from the sidebar to make note of **"SDK Key"** and **"SDK Secret"**
+4. In the resulting screen, click on "App Credential" from the sidebar to make note of **"Client ID"** and **"Client Secret"**
 
 > Note: Leave browser tab open. Later you will need to download the Windows SDK from this screen using the "Download" option on the sidebar.
 
@@ -76,7 +76,7 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
 5. From the CodeCommit console take note of the repository ARN from the "Repositories > Settings" side panel on the left.
 
-6. Create an IAM user with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** elements with the appropriate values:
+6. Create a new IAM User (eg. vpf_user) with the following attached policy statment. Be sure to replace AWS account ID and region in the **"Resource"** elements with the appropriate values:
 
     ```json
     "Statement": [
@@ -109,13 +109,13 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     The secret `usersecret` plaintext value should use the following format:
 
     ```json
-    {"AWS_ACCESS_KEY_ID":"<above_IAM_User_access_key","AWS_SECRET_ACCESS_KEY":"above_IAM_User_secret_key"}
+    {"AWS_ACCESS_KEY_ID":"<above_IAM_User_Access_Key>","AWS_SECRET_ACCESS_KEY":"<above_IAM_User_Secret_Access_Key>"}
     ```
 
     The secret `zoomsecret` plaintext value should use the following format:
 
     ```json
-    {"ZOOM_APP_KEY":"<Zoom_app_SDK_Key_or_Client_ID>","ZOOM_APP_SECRET":"<Zoom_app_SDK_Secret_or_Client_Secret"}
+    {"ZOOM_APP_KEY":"<Zoom_app_Client_ID_or_SDK_Key>","ZOOM_APP_SECRET":"<Zoom_app_Client_Secret_or_SDK_Secret>"}
     ```
 
 9. Update `cdk.json` with the following updated attributes:
@@ -147,13 +147,13 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     Example on linux (replace account # and region):
 
     ```shell
-    export CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-west-2
+    export CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-east-1
     ```
 
     Example on Windows (replace account # and region):
 
     ```batch
-    set CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-west-2
+    set CF_TEMPLATE_S3_BUCKET=codepipeline-custom-action-111111111111-us-east-1
     ```
 
     b) Create bucket:
@@ -206,33 +206,19 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
     git push -u origin main
     ```
 
-4. Change CodeCommit repo's default branch to `main`
-
-    On Linux:
-
-    ```shell
-    aws codecommit update-default-branch --repository-name $CODECOMMIT_REPO_NAME --default-branch-name main
-    ```
-
-    On Windows:
-
-    ```batch
-    aws codecommit update-default-branch --repository-name %CODECOMMIT_REPO_NAME% --default-branch-name main
-    ```
-    
-5. Synthesize the CDK application into deployment templates:
+4. Synthesize the CDK application into deployment templates:
 
     ```shell
     cdk synth
     ```
 
-6. Deploy the CDK application:
+5. Deploy the CDK application:
 
     ```shell
     cdk deploy
     ```
 ___
-🟩 The `cdk deploy` task completes in less than 15 minutes. However, the overall deployment takes about **2️⃣ hours** to complete due to the long Windows container image build cycle. If successful, you should see a container image tagged as *latest* in an Amazon ECR repository named **zoom-virtual-participant-windows**. You must wait for this image to appear in the ECR repo before proceeding further. To track deployment progress you can look at the infrastructure as code deployment pipelines in AWS CodePipeline generated by CDK. 
+🟩 The `cdk deploy` task completes in less than 5 minutes. However, the overall deployment takes about **2️⃣ hours** to complete due to the long Windows container image build cycle. If successful, you should see a container image tagged as *latest* in an Amazon ECR repository named **zoom-virtual-participant-windows**. You must wait for this image to appear in the ECR repo before proceeding further. To track deployment progress you can look at the infrastructure as code deployment pipelines in AWS CodePipeline generated by CDK. 
 ___
 🟥 If container image in ECR repository does not show up well beyond 2 hours, log into AWS console using the admin user and:
 1. Check both **CDKPipeline** and **windows-container-cicd-pipeline** pipelines are green in CodePipeline. Then,
