@@ -1,0 +1,108 @@
+diff --git a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+index aaeed53..06a46c1 100644
+--- a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
++++ b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+@@ -6,8 +6,6 @@ CSDKWithoutLoginStartJoinMeetingFlow::CSDKWithoutLoginStartJoinMeetingFlow()
+ 	m_pCSDKJoinMeetingOnlyFlowUIEvent = NULL;
+ 	m_pAuthService = NULL;
+ 	m_pMeetingService = NULL;
+-
+-	m_reminder_event = new ReminderEvent();
+ }
+ 
+ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
+@@ -15,8 +13,6 @@ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
+ 	m_pAuthService = NULL;
+ 	m_pMeetingService = NULL;
+ 	SDKInterfaceWrap::GetInst().UnListenMeetingServiceEvent(this);
+-
+-	delete m_reminder_event;
+ }
+ 
+ void CSDKWithoutLoginStartJoinMeetingFlow::Cleanup()
+@@ -67,12 +63,7 @@ ZOOM_SDK_NAMESPACE::SDKError CSDKWithoutLoginStartJoinMeetingFlow::JoinMeeting(Z
+ 					pAudioContext->EnableAutoJoinAudio(true);
+ 				}
+ 			}
+-
+-			const auto controller = m_pMeetingService->GetMeetingReminderController();
+-			ZOOM_SDK_NAMESPACE::SDKError err = controller->SetEvent(dynamic_cast<IMeetingReminderEvent*>(m_reminder_event));
+-
+-			if (err != SDKERR_SUCCESS) return err;
+-			
++			ZOOM_SDK_NAMESPACE::SDKError err = ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS;
+ 			err = m_pMeetingService->Join(paramJoinMeeting);
+ 			return err;
+ 		}
+diff --git a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+index a7550c7..5365519 100644
+--- a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
++++ b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+@@ -4,11 +4,6 @@
+ #include "resource.h"
+ #include "sdk_demo_app_common.h"
+ //#include "LOGIN_login_with_email_workflow.h"
+-
+-#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
+-
+-#include "ReminderEvent.h"
+-
+ class CSDKJoinMeetingOnlyFlowUIEvent
+ {
+  public:
+@@ -44,7 +39,4 @@ private:
+ 	CSDKJoinMeetingOnlyFlowUIEvent *m_pCSDKJoinMeetingOnlyFlowUIEvent;
+ 	ZOOM_SDK_NAMESPACE::IAuthService *m_pAuthService;
+ 	ZOOM_SDK_NAMESPACE::IMeetingService *m_pMeetingService;
+-
+-	ReminderEvent* m_reminder_event;
+-
+ };
+\ No newline at end of file
+diff --git a/a/x64/demo/sdk_demo_v2/ReminderEvent.cpp b/a/x64/demo/sdk_demo_v2/ReminderEvent.cpp
+deleted file mode 100644
+index 0359cd1..0000000
+--- a/a/x64/demo/sdk_demo_v2/ReminderEvent.cpp
++++ /dev/null
+@@ -1,10 +0,0 @@
+-﻿#include "stdafx.h"
+-#include "ReminderEvent.h"
+-
+-#include "sdk_util.h"
+-
+-void ReminderEvent::onReminderNotify(IMeetingReminderContent* content, IMeetingReminderHandler* handle)
+-{
+-	const bool is_tos = content->GetType() == TYPE_TERMS_OF_SERVICE;
+-	if (is_tos) handle->Accept();
+-}
+\ No newline at end of file
+diff --git a/a/x64/demo/sdk_demo_v2/ReminderEvent.h b/a/x64/demo/sdk_demo_v2/ReminderEvent.h
+deleted file mode 100644
+index a87b9e9..0000000
+--- a/a/x64/demo/sdk_demo_v2/ReminderEvent.h
++++ /dev/null
+@@ -1,11 +0,0 @@
+-﻿#pragma once
+-#include "stdafx.h"
+-#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
+-
+-using namespace ZOOMSDK;
+-
+-class ReminderEvent final : public IMeetingReminderEvent
+-{
+-public:
+-	void onReminderNotify(IMeetingReminderContent* content, IMeetingReminderHandler* handle) override;
+-};
+diff --git a/a/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp b/b/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp
+index 48dca1c..cb55cb7 100644
+--- a/a/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp
++++ b/b/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp
+@@ -567,8 +567,6 @@ void CCustomizeInMeetingUIMgr::onMeetingStatusChanged(ZOOM_SDK_NAMESPACE::Meetin
+ 				Start();
+ 
+ 			ShowPreview();
+-
+-			
+ 		}
+ 		break;
+ 	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_RECONNECTING:
