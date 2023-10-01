@@ -483,6 +483,64 @@ index 4cce4d9..5c0a77c 100644
  }
  
  void CustomizedUIRecordMgr::onCustomizedLocalRecordingSourceNotification(ZOOM_SDK_NAMESPACE::ICustomizedLocalRecordingLayoutHelper* layout_helper)
+diff --git a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+index 06a46c1..aaeed53 100644
+--- a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
++++ b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+@@ -6,6 +6,8 @@ CSDKWithoutLoginStartJoinMeetingFlow::CSDKWithoutLoginStartJoinMeetingFlow()
+ 	m_pCSDKJoinMeetingOnlyFlowUIEvent = NULL;
+ 	m_pAuthService = NULL;
+ 	m_pMeetingService = NULL;
++
++	m_reminder_event = new ReminderEvent();
+ }
+ 
+ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
+@@ -13,6 +15,8 @@ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
+ 	m_pAuthService = NULL;
+ 	m_pMeetingService = NULL;
+ 	SDKInterfaceWrap::GetInst().UnListenMeetingServiceEvent(this);
++
++	delete m_reminder_event;
+ }
+ 
+ void CSDKWithoutLoginStartJoinMeetingFlow::Cleanup()
+@@ -63,7 +67,12 @@ ZOOM_SDK_NAMESPACE::SDKError CSDKWithoutLoginStartJoinMeetingFlow::JoinMeeting(Z
+ 					pAudioContext->EnableAutoJoinAudio(true);
+ 				}
+ 			}
+-			ZOOM_SDK_NAMESPACE::SDKError err = ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS;
++
++			const auto controller = m_pMeetingService->GetMeetingReminderController();
++			ZOOM_SDK_NAMESPACE::SDKError err = controller->SetEvent(dynamic_cast<IMeetingReminderEvent*>(m_reminder_event));
++
++			if (err != SDKERR_SUCCESS) return err;
++			
+ 			err = m_pMeetingService->Join(paramJoinMeeting);
+ 			return err;
+ 		}
+diff --git a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+index 5365519..f41ce9c 100644
+--- a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
++++ b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+@@ -4,6 +4,9 @@
+ #include "resource.h"
+ #include "sdk_demo_app_common.h"
+ //#include "LOGIN_login_with_email_workflow.h"
++#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
++#include "ReminderEvent.h"
++
+ class CSDKJoinMeetingOnlyFlowUIEvent
+ {
+  public:
+@@ -39,4 +42,6 @@ private:
+ 	CSDKJoinMeetingOnlyFlowUIEvent *m_pCSDKJoinMeetingOnlyFlowUIEvent;
+ 	ZOOM_SDK_NAMESPACE::IAuthService *m_pAuthService;
+ 	ZOOM_SDK_NAMESPACE::IMeetingService *m_pMeetingService;
++	
++	ReminderEvent *m_reminder_event;
+ };
+\ No newline at end of file
 diff --git a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
 index 47d8c8c..63549b6 100644
 --- a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
@@ -1138,7 +1196,7 @@ index 47d8c8c..63549b6 100644
  			m_parentFrame->GetAppEvent()->onLoginFailed();
  		}
 diff --git a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
-index 6591d59..868f1e4 100644
+index 6591d59..fd995e8 100644
 --- a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
 +++ b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
 @@ -6,6 +6,8 @@
@@ -1171,7 +1229,7 @@ index 6591d59..868f1e4 100644
  	CSDKLoginUIMgr*	   m_parentFrame;
  	CSDKWithoutLoginStartJoinMeetingFlow  m_withoutLoginJoinMeetingWorkFlow;
 -	bool m_bInMeeting;
-+	
++
 +private:
 +	void PublishMeetingStatusChangedToSNS(std::string status);
  };
@@ -1189,6 +1247,38 @@ index 6591d59..868f1e4 100644
  public:
  	virtual LPCTSTR		GetWindowClassName() const   {   return _T("zSDKDemoUI");  }
  	UINT GetClassStyle() const { return UI_CLASSSTYLE_FRAME | CS_DBLCLKS ; };
+diff --git a/x64/demo/sdk_demo_v2/ReminderEvent.cpp b/x64/demo/sdk_demo_v2/ReminderEvent.cpp
+new file mode 100644
+index 0000000..54d1380
+--- /dev/null
++++ b/x64/demo/sdk_demo_v2/ReminderEvent.cpp
+@@ -0,0 +1,9 @@
++#include "stdafx.h"
++#include "ReminderEvent.h"
++#include "sdk_util.h"
++
++void ReminderEvent::onReminderNotify(IMeetingReminderContent* content, IMeetingReminderHandler* handle)
++{
++	const bool is_tos = content->GetType() == TYPE_TERMS_OF_SERVICE;
++	if (is_tos) handle->Accept();
++}
+diff --git a/x64/demo/sdk_demo_v2/ReminderEvent.h b/x64/demo/sdk_demo_v2/ReminderEvent.h
+new file mode 100644
+index 0000000..903b700
+--- /dev/null
++++ b/x64/demo/sdk_demo_v2/ReminderEvent.h
+@@ -0,0 +1,11 @@
++#pragma once
++#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
++
++using namespace ZOOMSDK;
++
++class ReminderEvent : public IMeetingReminderEvent
++{
++public:
++	void onReminderNotify(IMeetingReminderContent * content, IMeetingReminderHandler * handle) override;
++};
++
 diff --git a/x64/demo/sdk_demo_v2/SNSService.cpp b/x64/demo/sdk_demo_v2/SNSService.cpp
 new file mode 100644
 index 0000000..fc6ec99
@@ -2438,7 +2528,7 @@ index ecb11d8..8111d32 100644
  		if (WM_QUIT == msg.message)
  		{
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
-index e270f52..6737b47 100644
+index e270f52..8ff4d11 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
 +++ b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
 @@ -83,12 +83,16 @@
@@ -2540,7 +2630,15 @@ index e270f52..6737b47 100644
      <ClCompile Include="init_auth_sdk_workflow.cpp" />
      <ClCompile Include="invitation_ui.cpp" />
      <ClCompile Include="invitation_workflow.cpp" />
-@@ -233,6 +244,7 @@
+@@ -219,6 +230,7 @@
+     <ClCompile Include="more_menu_ui.cpp" />
+     <ClCompile Include="ParticipantPopMenu.cpp" />
+     <ClCompile Include="participant_ui.cpp" />
++    <ClCompile Include="ReminderEvent.cpp" />
+     <ClCompile Include="sdk_demo_app.cpp" />
+     <ClCompile Include="sdk_demo_v2.cpp" />
+     <ClCompile Include="sdk_init_auth_ui.cpp" />
+@@ -233,6 +245,7 @@
      <ClCompile Include="SETTINGS_video_workflow.cpp" />
      <ClCompile Include="SETTINGS_virtualBG_workflow.cpp" />
      <ClCompile Include="ShareToolbarWindow.cpp" />
@@ -2548,7 +2646,7 @@ index e270f52..6737b47 100644
      <ClCompile Include="stdafx.cpp">
        <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
        <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-@@ -245,6 +257,7 @@
+@@ -245,6 +258,7 @@
      <ClCompile Include="user_manager.cpp" />
      <ClCompile Include="util_window.cpp" />
      <ClCompile Include="ViewOptionsWindow.cpp" />
@@ -2556,7 +2654,7 @@ index e270f52..6737b47 100644
    </ItemGroup>
    <ItemGroup>
      <ClInclude Include="AnnotateBarWindow.h" />
-@@ -268,6 +281,7 @@
+@@ -268,6 +282,7 @@
      <ClInclude Include="custom_ui_video_flow.h" />
      <ClInclude Include="custom_ui_video_mgr.h" />
      <ClInclude Include="display_cc_ui.h" />
@@ -2564,7 +2662,15 @@ index e270f52..6737b47 100644
      <ClInclude Include="init_auth_sdk_workflow.h" />
      <ClInclude Include="invitation_ui.h" />
      <ClInclude Include="invitation_workflow.h" />
-@@ -301,6 +315,7 @@
+@@ -285,6 +300,7 @@
+     <ClInclude Include="more_menu_ui.h" />
+     <ClInclude Include="ParticipantPopMenu.h" />
+     <ClInclude Include="participant_ui.h" />
++    <ClInclude Include="ReminderEvent.h" />
+     <ClInclude Include="Resource.h" />
+     <ClInclude Include="sdk_demo_app.h" />
+     <ClInclude Include="sdk_demo_app_common.h" />
+@@ -301,6 +317,7 @@
      <ClInclude Include="SETTINGS_video_workflow.h" />
      <ClInclude Include="SETTINGS_virtualBG_workflow.h" />
      <ClInclude Include="ShareToolbarWindow.h" />
@@ -2572,7 +2678,7 @@ index e270f52..6737b47 100644
      <ClInclude Include="stdafx.h" />
      <ClInclude Include="targetver.h" />
      <ClInclude Include="toolbar_bottom_ui.h" />
-@@ -309,6 +324,7 @@
+@@ -309,6 +326,7 @@
      <ClInclude Include="user_manager.h" />
      <ClInclude Include="util_window.h" />
      <ClInclude Include="ViewOptionsWindow.h" />
@@ -2581,10 +2687,10 @@ index e270f52..6737b47 100644
    <ItemGroup>
      <ResourceCompile Include="sdk_demo_v2.rc" />
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
-index 00ad46d..82df2db 100644
+index 00ad46d..86d5945 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
 +++ b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
-@@ -315,6 +315,15 @@
+@@ -315,6 +315,18 @@
      <ClCompile Include="join_webinar_wnd_ui.cpp">
        <Filter>Source Files\3_how_to_start_join_meeting\4_webinar_register_join_meeting</Filter>
      </ClCompile>
@@ -2597,10 +2703,13 @@ index 00ad46d..82df2db 100644
 +    <ClCompile Include="SNSService.cpp">
 +      <Filter>Source Files</Filter>
 +    </ClCompile>
++    <ClCompile Include="ReminderEvent.cpp">
++      <Filter>Source Files</Filter>
++    </ClCompile>
    </ItemGroup>
    <ItemGroup>
      <ClInclude Include="sdk_demo_app.h">
-@@ -503,6 +512,15 @@
+@@ -503,6 +515,18 @@
      <ClInclude Include="join_webinar_wnd_ui.h">
        <Filter>Source Files\3_how_to_start_join_meeting\4_webinar_register_join_meeting</Filter>
      </ClInclude>
@@ -2611,6 +2720,9 @@ index 00ad46d..82df2db 100644
 +      <Filter>Source Files</Filter>
 +    </ClInclude>
 +    <ClInclude Include="SNSService.h">
++      <Filter>Source Files</Filter>
++    </ClInclude>
++    <ClInclude Include="ReminderEvent.h">
 +      <Filter>Source Files</Filter>
 +    </ClInclude>
    </ItemGroup>
