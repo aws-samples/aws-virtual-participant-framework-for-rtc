@@ -1,108 +1,134 @@
-diff --git a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
-index aaeed53..06a46c1 100644
---- a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
-+++ b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
-@@ -6,8 +6,6 @@ CSDKWithoutLoginStartJoinMeetingFlow::CSDKWithoutLoginStartJoinMeetingFlow()
+diff --git a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+index 06a46c1..aaeed53 100644
+--- a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
++++ b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+@@ -6,6 +6,8 @@ CSDKWithoutLoginStartJoinMeetingFlow::CSDKWithoutLoginStartJoinMeetingFlow()
  	m_pCSDKJoinMeetingOnlyFlowUIEvent = NULL;
  	m_pAuthService = NULL;
  	m_pMeetingService = NULL;
--
--	m_reminder_event = new ReminderEvent();
++
++	m_reminder_event = new ReminderEvent();
  }
  
  CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
-@@ -15,8 +13,6 @@ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
+@@ -13,6 +15,8 @@ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
  	m_pAuthService = NULL;
  	m_pMeetingService = NULL;
  	SDKInterfaceWrap::GetInst().UnListenMeetingServiceEvent(this);
--
--	delete m_reminder_event;
++
++	delete m_reminder_event;
  }
  
  void CSDKWithoutLoginStartJoinMeetingFlow::Cleanup()
-@@ -67,12 +63,7 @@ ZOOM_SDK_NAMESPACE::SDKError CSDKWithoutLoginStartJoinMeetingFlow::JoinMeeting(Z
+@@ -63,7 +67,12 @@ ZOOM_SDK_NAMESPACE::SDKError CSDKWithoutLoginStartJoinMeetingFlow::JoinMeeting(Z
  					pAudioContext->EnableAutoJoinAudio(true);
  				}
  			}
--
--			const auto controller = m_pMeetingService->GetMeetingReminderController();
--			ZOOM_SDK_NAMESPACE::SDKError err = controller->SetEvent(dynamic_cast<IMeetingReminderEvent*>(m_reminder_event));
--
--			if (err != SDKERR_SUCCESS) return err;
--			
-+			ZOOM_SDK_NAMESPACE::SDKError err = ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS;
+-			ZOOM_SDK_NAMESPACE::SDKError err = ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS;
++
++			const auto controller = m_pMeetingService->GetMeetingReminderController();
++			ZOOM_SDK_NAMESPACE::SDKError err = controller->SetEvent(dynamic_cast<IMeetingReminderEvent*>(m_reminder_event));
++
++			if (err != SDKERR_SUCCESS) return err;
++			
  			err = m_pMeetingService->Join(paramJoinMeeting);
  			return err;
  		}
-diff --git a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
-index a7550c7..5365519 100644
---- a/a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
-+++ b/b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
-@@ -4,11 +4,6 @@
+diff --git a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+index 5365519..f41ce9c 100644
+--- a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
++++ b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+@@ -4,6 +4,9 @@
  #include "resource.h"
  #include "sdk_demo_app_common.h"
  //#include "LOGIN_login_with_email_workflow.h"
--
--#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
--
--#include "ReminderEvent.h"
--
++#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
++#include "ReminderEvent.h"
++
  class CSDKJoinMeetingOnlyFlowUIEvent
  {
   public:
-@@ -44,7 +39,4 @@ private:
+@@ -39,4 +42,6 @@ private:
  	CSDKJoinMeetingOnlyFlowUIEvent *m_pCSDKJoinMeetingOnlyFlowUIEvent;
  	ZOOM_SDK_NAMESPACE::IAuthService *m_pAuthService;
  	ZOOM_SDK_NAMESPACE::IMeetingService *m_pMeetingService;
--
--	ReminderEvent* m_reminder_event;
--
++	
++	ReminderEvent *m_reminder_event;
  };
 \ No newline at end of file
-diff --git a/a/x64/demo/sdk_demo_v2/ReminderEvent.cpp b/a/x64/demo/sdk_demo_v2/ReminderEvent.cpp
-deleted file mode 100644
-index 0359cd1..0000000
---- a/a/x64/demo/sdk_demo_v2/ReminderEvent.cpp
-+++ /dev/null
-@@ -1,10 +0,0 @@
--﻿#include "stdafx.h"
--#include "ReminderEvent.h"
--
--#include "sdk_util.h"
--
--void ReminderEvent::onReminderNotify(IMeetingReminderContent* content, IMeetingReminderHandler* handle)
--{
--	const bool is_tos = content->GetType() == TYPE_TERMS_OF_SERVICE;
--	if (is_tos) handle->Accept();
--}
-\ No newline at end of file
-diff --git a/a/x64/demo/sdk_demo_v2/ReminderEvent.h b/a/x64/demo/sdk_demo_v2/ReminderEvent.h
-deleted file mode 100644
-index a87b9e9..0000000
---- a/a/x64/demo/sdk_demo_v2/ReminderEvent.h
-+++ /dev/null
-@@ -1,11 +0,0 @@
--﻿#pragma once
--#include "stdafx.h"
--#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
--
--using namespace ZOOMSDK;
--
--class ReminderEvent final : public IMeetingReminderEvent
--{
--public:
--	void onReminderNotify(IMeetingReminderContent* content, IMeetingReminderHandler* handle) override;
--};
-diff --git a/a/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp b/b/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp
-index 48dca1c..cb55cb7 100644
---- a/a/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp
-+++ b/b/x64/demo/sdk_demo_v2/custom_ui_mgr.cpp
-@@ -567,8 +567,6 @@ void CCustomizeInMeetingUIMgr::onMeetingStatusChanged(ZOOM_SDK_NAMESPACE::Meetin
- 				Start();
- 
- 			ShowPreview();
--
--			
- 		}
- 		break;
- 	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_RECONNECTING:
+diff --git a/x64/demo/sdk_demo_v2/ReminderEvent.cpp b/x64/demo/sdk_demo_v2/ReminderEvent.cpp
+new file mode 100644
+index 0000000..54d1380
+--- /dev/null
++++ b/x64/demo/sdk_demo_v2/ReminderEvent.cpp
+@@ -0,0 +1,9 @@
++#include "stdafx.h"
++#include "ReminderEvent.h"
++#include "sdk_util.h"
++
++void ReminderEvent::onReminderNotify(IMeetingReminderContent* content, IMeetingReminderHandler* handle)
++{
++	const bool is_tos = content->GetType() == TYPE_TERMS_OF_SERVICE;
++	if (is_tos) handle->Accept();
++}
+diff --git a/x64/demo/sdk_demo_v2/ReminderEvent.h b/x64/demo/sdk_demo_v2/ReminderEvent.h
+new file mode 100644
+index 0000000..903b700
+--- /dev/null
++++ b/x64/demo/sdk_demo_v2/ReminderEvent.h
+@@ -0,0 +1,11 @@
++#pragma once
++#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
++
++using namespace ZOOMSDK;
++
++class ReminderEvent : public IMeetingReminderEvent
++{
++public:
++	void onReminderNotify(IMeetingReminderContent * content, IMeetingReminderHandler * handle) override;
++};
++
+diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
+index 9e00fae..8ff4d11 100644
+--- a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
++++ b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
+@@ -230,6 +230,7 @@
+     <ClCompile Include="more_menu_ui.cpp" />
+     <ClCompile Include="ParticipantPopMenu.cpp" />
+     <ClCompile Include="participant_ui.cpp" />
++    <ClCompile Include="ReminderEvent.cpp" />
+     <ClCompile Include="sdk_demo_app.cpp" />
+     <ClCompile Include="sdk_demo_v2.cpp" />
+     <ClCompile Include="sdk_init_auth_ui.cpp" />
+@@ -299,6 +300,7 @@
+     <ClInclude Include="more_menu_ui.h" />
+     <ClInclude Include="ParticipantPopMenu.h" />
+     <ClInclude Include="participant_ui.h" />
++    <ClInclude Include="ReminderEvent.h" />
+     <ClInclude Include="Resource.h" />
+     <ClInclude Include="sdk_demo_app.h" />
+     <ClInclude Include="sdk_demo_app_common.h" />
+diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
+index 82df2db..86d5945 100644
+--- a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
++++ b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
+@@ -324,6 +324,9 @@
+     <ClCompile Include="SNSService.cpp">
+       <Filter>Source Files</Filter>
+     </ClCompile>
++    <ClCompile Include="ReminderEvent.cpp">
++      <Filter>Source Files</Filter>
++    </ClCompile>
+   </ItemGroup>
+   <ItemGroup>
+     <ClInclude Include="sdk_demo_app.h">
+@@ -521,6 +524,9 @@
+     <ClInclude Include="SNSService.h">
+       <Filter>Source Files</Filter>
+     </ClInclude>
++    <ClInclude Include="ReminderEvent.h">
++      <Filter>Source Files</Filter>
++    </ClInclude>
+   </ItemGroup>
+   <ItemGroup>
+     <ResourceCompile Include="sdk_demo_v2.rc">
