@@ -483,8 +483,66 @@ index 4cce4d9..5c0a77c 100644
  }
  
  void CustomizedUIRecordMgr::onCustomizedLocalRecordingSourceNotification(ZOOM_SDK_NAMESPACE::ICustomizedLocalRecordingLayoutHelper* layout_helper)
+diff --git a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+index 06a46c1..aaeed53 100644
+--- a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
++++ b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.cpp
+@@ -6,6 +6,8 @@ CSDKWithoutLoginStartJoinMeetingFlow::CSDKWithoutLoginStartJoinMeetingFlow()
+ 	m_pCSDKJoinMeetingOnlyFlowUIEvent = NULL;
+ 	m_pAuthService = NULL;
+ 	m_pMeetingService = NULL;
++
++	m_reminder_event = new ReminderEvent();
+ }
+ 
+ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
+@@ -13,6 +15,8 @@ CSDKWithoutLoginStartJoinMeetingFlow::~CSDKWithoutLoginStartJoinMeetingFlow()
+ 	m_pAuthService = NULL;
+ 	m_pMeetingService = NULL;
+ 	SDKInterfaceWrap::GetInst().UnListenMeetingServiceEvent(this);
++
++	delete m_reminder_event;
+ }
+ 
+ void CSDKWithoutLoginStartJoinMeetingFlow::Cleanup()
+@@ -63,7 +67,12 @@ ZOOM_SDK_NAMESPACE::SDKError CSDKWithoutLoginStartJoinMeetingFlow::JoinMeeting(Z
+ 					pAudioContext->EnableAutoJoinAudio(true);
+ 				}
+ 			}
+-			ZOOM_SDK_NAMESPACE::SDKError err = ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS;
++
++			const auto controller = m_pMeetingService->GetMeetingReminderController();
++			ZOOM_SDK_NAMESPACE::SDKError err = controller->SetEvent(dynamic_cast<IMeetingReminderEvent*>(m_reminder_event));
++
++			if (err != SDKERR_SUCCESS) return err;
++			
+ 			err = m_pMeetingService->Join(paramJoinMeeting);
+ 			return err;
+ 		}
+diff --git a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+index 5365519..f41ce9c 100644
+--- a/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
++++ b/x64/demo/sdk_demo_v2/LOGIN_join_meeting_only_workflow.h
+@@ -4,6 +4,9 @@
+ #include "resource.h"
+ #include "sdk_demo_app_common.h"
+ //#include "LOGIN_login_with_email_workflow.h"
++#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
++#include "ReminderEvent.h"
++
+ class CSDKJoinMeetingOnlyFlowUIEvent
+ {
+  public:
+@@ -39,4 +42,6 @@ private:
+ 	CSDKJoinMeetingOnlyFlowUIEvent *m_pCSDKJoinMeetingOnlyFlowUIEvent;
+ 	ZOOM_SDK_NAMESPACE::IAuthService *m_pAuthService;
+ 	ZOOM_SDK_NAMESPACE::IMeetingService *m_pMeetingService;
++	
++	ReminderEvent *m_reminder_event;
+ };
+\ No newline at end of file
 diff --git a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
-index 0e4dd7d..5fd02fc 100644
+index 47d8c8c..63549b6 100644
 --- a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
 +++ b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.cpp
 @@ -3,6 +3,9 @@
@@ -497,6 +555,92 @@ index 0e4dd7d..5fd02fc 100644
  
  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  //class CSDKLoginWithSSOUIGroup 
+@@ -23,10 +26,10 @@ CSDKLoginWithSSOUIGroup::~CSDKLoginWithSSOUIGroup()
+ }
+ void CSDKLoginWithSSOUIGroup::InitWindow(CPaintManagerUI& ui_mgr, CSDKLoginUIMgr* main_frame_)
+ {
+-	m_loginWithSSOPage = static_cast<CVerticalLayoutUI* >(ui_mgr.FindControl(_T("panel_Login_With_SSO")));
+-	m_editSSOtoken = static_cast<CRichEditUI* >(ui_mgr.FindControl(_T("edit_sso_token")));
++	m_loginWithSSOPage = static_cast<CVerticalLayoutUI*>(ui_mgr.FindControl(_T("panel_Login_With_SSO")));
++	m_editSSOtoken = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_sso_token")));
+ 
+-	m_btnLogin = static_cast<CButtonUI* >(ui_mgr.FindControl(_T("btn_sso_login")));
++	m_btnLogin = static_cast<CButtonUI*>(ui_mgr.FindControl(_T("btn_sso_login")));
+ 	m_btnGetSSOLoginUrl = static_cast<CButtonUI*>(ui_mgr.FindControl(_T("btn_get_sso_url")));
+ 	m_editPrefixOfVanityUrl = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_prefix_of_vanity_url")));
+ 	m_parentFrame = main_frame_;
+@@ -56,7 +59,7 @@ void CSDKLoginWithSSOUIGroup::Hide()
+ 	}
+ 
+ }
+-void CSDKLoginWithSSOUIGroup::Notify( TNotifyUI& msg )
++void CSDKLoginWithSSOUIGroup::Notify(TNotifyUI& msg)
+ {
+ 	if (msg.sType == _T("click") && m_loginWithSSOPage->IsVisible())
+ 	{
+@@ -80,10 +83,10 @@ void CSDKLoginWithSSOUIGroup::Notify( TNotifyUI& msg )
+ 
+ void CSDKLoginWithSSOUIGroup::DoLoginWithSSOBtnClick()
+ {
+-	if(NULL == m_editSSOtoken)
++	if (NULL == m_editSSOtoken)
+ 		return;
+ 	std::wstring sso_web_uri_protocol = m_editSSOtoken->GetText().GetData();
+-	if (sso_web_uri_protocol.size()>0)
++	if (sso_web_uri_protocol.size() > 0)
+ 	{
+ 		ZOOM_SDK_NAMESPACE::SDKError err = ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS;
+ 		err = m_loginSSOWorkFlow.Login(sso_web_uri_protocol.c_str());
+@@ -94,7 +97,7 @@ void CSDKLoginWithSSOUIGroup::DoLoginWithSSOBtnClick()
+ 		}
+ 		else
+ 		{
+-			if(m_parentFrame)
++			if (m_parentFrame)
+ 			{
+ 				m_parentFrame->SetCurrentPage(m_loginWithSSOPage);
+ 				m_parentFrame->SwitchToWaitingPage(L"waiting sso login...", true);
+@@ -129,11 +132,11 @@ CSDKWithoutLoginStartJoinMeetingUIGroup::~CSDKWithoutLoginStartJoinMeetingUIGrou
+ 
+ void CSDKWithoutLoginStartJoinMeetingUIGroup::InitWindow(CPaintManagerUI& ui_mgr, CSDKLoginUIMgr* main_frame_)
+ {
+-	m_WithoutLoginStartJoinMeetingPage = static_cast<CVerticalLayoutUI* >(ui_mgr.FindControl(_T("panel_Join_Meeting_Only")));
+-	m_editMeetingNumber = static_cast<CRichEditUI* >(ui_mgr.FindControl(_T("edit_meeting_number")));
+-	m_editScreenName = static_cast<CRichEditUI* >(ui_mgr.FindControl(_T("edit_screen_name")));
+-	m_editMeetingPassword = static_cast<CRichEditUI* >(ui_mgr.FindControl(_T("edit_meeting_password")));
+-	m_btnJoin = static_cast<CButtonUI* >(ui_mgr.FindControl(_T("btn_join")));
++	m_WithoutLoginStartJoinMeetingPage = static_cast<CVerticalLayoutUI*>(ui_mgr.FindControl(_T("panel_Join_Meeting_Only")));
++	m_editMeetingNumber = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_meeting_number")));
++	m_editScreenName = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_screen_name")));
++	m_editMeetingPassword = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_meeting_password")));
++	m_btnJoin = static_cast<CButtonUI*>(ui_mgr.FindControl(_T("btn_join")));
+ 	m_parentFrame = main_frame_;
+ 	m_withoutLoginJoinMeetingWorkFlow.SetUIEvent(this);
+ }
+@@ -169,11 +172,11 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::Hide()
+ 	}
+ }
+ 
+-void CSDKWithoutLoginStartJoinMeetingUIGroup::Notify( TNotifyUI& msg )
++void CSDKWithoutLoginStartJoinMeetingUIGroup::Notify(TNotifyUI& msg)
+ {
+-	if(msg.sType == _T("click") && m_WithoutLoginStartJoinMeetingPage->IsVisible())
++	if (msg.sType == _T("click") && m_WithoutLoginStartJoinMeetingPage->IsVisible())
+ 	{
+-		if(msg.pSender == m_btnJoin)
++		if (msg.pSender == m_btnJoin)
+ 		{
+ 			DoWithoutLoginStartJoinMeetingBtnClick();
+ 		}
+@@ -182,7 +185,7 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::Notify( TNotifyUI& msg )
+ 
+ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnClick()
+ {
+-	if(NULL == m_editMeetingNumber  || NULL == m_editMeetingPassword || NULL == m_editScreenName )
++	if (NULL == m_editMeetingNumber || NULL == m_editMeetingPassword || NULL == m_editScreenName)
+ 		return;
+ 	ZOOM_SDK_NAMESPACE::tagJoinParam joinParam;
+ 	joinParam.userType = ZOOM_SDK_NAMESPACE::SDK_UT_WITHOUT_LOGIN;
 @@ -191,6 +194,8 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
  	std::wstring MeetingPassword = m_editMeetingPassword->GetText().GetData();
  	std::wstring ScreenName = m_editScreenName->GetText().GetData();
@@ -506,15 +650,48 @@ index 0e4dd7d..5fd02fc 100644
  	withoutloginParam.vanityID = NULL;
  	withoutloginParam.userName = ScreenName.c_str();
  	withoutloginParam.psw = MeetingPassword.c_str();
-@@ -201,6 +206,7 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
+@@ -201,24 +206,25 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
  	withoutloginParam.isDirectShareDesktop = false;
  	withoutloginParam.isVideoOff = false;
  	withoutloginParam.isAudioOff = false;
 +	withoutloginParam.join_token = NULL;
  
- 	if(MeetingNumber.size() > 0)
+-	if(MeetingNumber.size() > 0)
++	if (MeetingNumber.size() > 0)
  	{
-@@ -243,53 +249,121 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
+-		if(m_parentFrame)
++		if (m_parentFrame)
+ 		{
+ 			m_parentFrame->SetCurrentPage(m_WithoutLoginStartJoinMeetingPage);
+-			m_parentFrame->SwitchToWaitingPage(_T("waiting to join meeting..."),true);
++			m_parentFrame->SwitchToWaitingPage(_T("waiting to join meeting..."), true);
+ 		}
+-		
++
+ 		if (SDKInterfaceWrap::GetInst().IsSelectCustomizedUIMode())
+ 		{
+ 			CSDKDemoAppEvent* pAppEvent = m_parentFrame->GetAppEvent();
+-			if(pAppEvent)
++			if (pAppEvent)
+ 				pAppEvent->InitCustomizedUI();
+ 		}
+ 		ZOOM_SDK_NAMESPACE::SDKError err = ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS;
+ 		err = m_withoutLoginJoinMeetingWorkFlow.JoinMeeting(joinParam);
+-		if(ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS == err)
++		if (ZOOM_SDK_NAMESPACE::SDKERR_SUCCESS == err)
+ 		{
+ 			m_bInMeeting = true;
+ 		}
+@@ -226,7 +232,7 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
+ 	}
+ 	if (m_parentFrame)
+ 	{
+-		if(MeetingNumber.size() <=0)
++		if (MeetingNumber.size() <= 0)
+ 		{
+ 			m_parentFrame->ShowErrorMessage(_T("Meeting number could not be NULL!"));
+ 			m_editMeetingNumber->SetFocus();
+@@ -243,51 +249,119 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::DoWithoutLoginStartJoinMeetingBtnC
  
  void CSDKWithoutLoginStartJoinMeetingUIGroup::onMeetingStatusChanged(ZOOM_SDK_NAMESPACE::MeetingStatus status, int iResult)
  {
@@ -530,17 +707,17 @@ index 0e4dd7d..5fd02fc 100644
 +			if (pAppEvent)
  				pAppEvent->InitCustomizedUI();
  		}
-+	//	m_bInMeeting = false;
++		//	m_bInMeeting = false;
 +		PublishMeetingStatusChangedToSNS("MEETING_STATUS_RECONNECTING");
  		break;
 +
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_CONNECTING:
-+	//	m_bInMeeting = false;
++		//	m_bInMeeting = false;
 +		PublishMeetingStatusChangedToSNS("MEETING_STATUS_CONNECTING");
 +		break;
 +
  	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_DISCONNECTING:
-+	//	m_bInMeeting = false;
++		//	m_bInMeeting = false;
 +		PublishMeetingStatusChangedToSNS("MEETING_STATUS_DISCONNECTING");
  		break;
 +
@@ -595,25 +772,25 @@ index 0e4dd7d..5fd02fc 100644
 +		break;
 +
 +	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_IN_WAITING_ROOM:
-+	//	m_bInMeeting = false;
++		//	m_bInMeeting = false;
 +		PublishMeetingStatusChangedToSNS("MEETING_STATUS_IN_WAITING_ROOM");
 +		break;
 +
 +	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_WAITINGFORHOST:
-+	//	m_bInMeeting = false;
++		//	m_bInMeeting = false;
 +		PublishMeetingStatusChangedToSNS("MEETING_STATUS_WAITINGFORHOST");
 +		break;
 +
  	default:
  		break;
 +
- 	}
- }
- 
++	}
++}
++
 +void CSDKWithoutLoginStartJoinMeetingUIGroup::PublishMeetingStatusChangedToSNS(std::string status)
 +{
 +	auto sns_topic_arn = std::getenv("SNS_TOPIC_ARN");
-+	
++
 +	if (sns_topic_arn == NULL || strlen(sns_topic_arn) < 1)
 +	{
 +		std::cout << "SNS Topic ARN cannot be empty string or NULL" << std::endl;
@@ -631,10 +808,10 @@ index 0e4dd7d..5fd02fc 100644
 +	std::map<std::string, std::string> message_attributes;
 +	message_attributes["event_type"] = "MEETING_STATUS_CHANGE";
 +	message_attributes["meeting_status"] = status;
-+	
++
 +	ZOOM_SDK_NAMESPACE::IMeetingService* meeting_service = SDKInterfaceWrap::GetInst().GetMeetingService();
 +	if (meeting_service != NULL && meeting_service->GetMeetingInfo())
-+	{ 
++	{
 +		std::ostringstream meeting_number_ostream;
 +		meeting_number_ostream << meeting_service->GetMeetingInfo()->GetMeetingNumber();
 +		auto meeting_number = meeting_number_ostream.str();
@@ -642,21 +819,179 @@ index 0e4dd7d..5fd02fc 100644
 +
 +		message += " for meeting number: " + meeting_number;
 +	}
-+	else 
++	else
 +	{
-+		message +=  " for unknown meeting number";
-+	}
++		message += " for unknown meeting number";
+ 	}
 +
 +	std::shared_ptr<SNSService> sns = sns->instance();
 +	sns->Publish(sns_topic_arn, message, message_attributes);
-+}
-+
+ }
+ 
  //////////////////////////////////////////////////////////////////////////////////////////////
- //class CSDKRestAPIUserUIGroup 
+@@ -295,7 +369,7 @@ void CSDKWithoutLoginStartJoinMeetingUIGroup::onMeetingStatusChanged(ZOOM_SDK_NA
  CSDKRestAPIUserUIGroup::CSDKRestAPIUserUIGroup()
-@@ -562,12 +636,43 @@ void CSDKLoginUIMgr::InitWindow()
- 	m_restApi_login_page = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_RestAPI_Without_Login"));
- 	m_only_join_page = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_Join_Meeting_Only"));
+ {
+ 	m_WithoutLoginRestAPIPage = NULL;
+-	
++
+ 	m_editRestAPIUserZAK = NULL;
+ 	m_editMeetingNumber = NULL;
+ 	m_editScreenName = NULL;
+@@ -315,11 +389,11 @@ CSDKRestAPIUserUIGroup::~CSDKRestAPIUserUIGroup()
+ }
+ void CSDKRestAPIUserUIGroup::InitWindow(CPaintManagerUI& ui_mgr, CSDKLoginUIMgr* main_frame_)
+ {
+-	m_WithoutLoginRestAPIPage = static_cast<CVerticalLayoutUI* >(ui_mgr.FindControl(_T("panel_RestAPI_Without_Login")));
+-	m_editRestAPIUserZAK = static_cast<CRichEditUI* >(ui_mgr.FindControl(_T("edit_restapi_user_zak")));
+-	m_editScreenName = static_cast<CRichEditUI* >(ui_mgr.FindControl(_T("edit_restapi_ScreenName")));	
+-	m_editMeetingNumber = static_cast<CRichEditUI* >(ui_mgr.FindControl(_T("edit_restapi_meeting_number")));
+-	m_btnStartMeeting = static_cast<CButtonUI* >(ui_mgr.FindControl(_T("btn_reset_api_without_login")));
++	m_WithoutLoginRestAPIPage = static_cast<CVerticalLayoutUI*>(ui_mgr.FindControl(_T("panel_RestAPI_Without_Login")));
++	m_editRestAPIUserZAK = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_restapi_user_zak")));
++	m_editScreenName = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_restapi_ScreenName")));
++	m_editMeetingNumber = static_cast<CRichEditUI*>(ui_mgr.FindControl(_T("edit_restapi_meeting_number")));
++	m_btnStartMeeting = static_cast<CButtonUI*>(ui_mgr.FindControl(_T("btn_reset_api_without_login")));
+ 	m_btnJoinMeeting = static_cast<CButtonUI*>(ui_mgr.FindControl(_T("btn_reset_api_join_without_login")));
+ 	m_parentFrame = main_frame_;
+ 	m_RestAPIUserWorkFlow.SetUIEvent(this);
+@@ -356,7 +430,7 @@ void CSDKRestAPIUserUIGroup::Hide()
+ 	}
+ 
+ }
+-void CSDKRestAPIUserUIGroup::Notify( TNotifyUI& msg )
++void CSDKRestAPIUserUIGroup::Notify(TNotifyUI& msg)
+ {
+ 	if (msg.sType == _T("click") && m_WithoutLoginRestAPIPage->IsVisible())
+ 	{
+@@ -379,7 +453,7 @@ void CSDKRestAPIUserUIGroup::DoWithoutLoginStartMeetingBtnClick()
+ 	std::wstring _restAPIUserZAK = m_editRestAPIUserZAK->GetText().GetData();
+ 	std::wstring _meetingNumber = m_editMeetingNumber->GetText().GetData();
+ 	std::wstring _userScreenName = m_editScreenName->GetText().GetData();
+-	
++
+ 	bool bNeedWaiting = false;
+ 	ZOOM_SDK_NAMESPACE::StartParam startParam;
+ 	startParam.userType = ZOOM_SDK_NAMESPACE::SDK_UT_WITHOUT_LOGIN;
+@@ -388,13 +462,13 @@ void CSDKRestAPIUserUIGroup::DoWithoutLoginStartMeetingBtnClick()
+ 
+ 	RestAPIUserStartParam.userZAK = _restAPIUserZAK.c_str();
+ 	RestAPIUserStartParam.userName = _userScreenName.c_str();
+-	RestAPIUserStartParam.zoomuserType =ZOOM_SDK_NAMESPACE:: ZoomUserType_APIUSER;
++	RestAPIUserStartParam.zoomuserType = ZOOM_SDK_NAMESPACE::ZoomUserType_APIUSER;
+ 	RestAPIUserStartParam.meetingNumber = _wtoi64(_meetingNumber.c_str());
+ 
+ 	if (SDKInterfaceWrap::GetInst().IsSelectCustomizedUIMode() && m_parentFrame)
+ 	{
+ 		CSDKDemoAppEvent* pAppEvent = m_parentFrame->GetAppEvent();
+-		if(pAppEvent)
++		if (pAppEvent)
+ 			pAppEvent->InitCustomizedUI();
+ 	}
+ 
+@@ -402,8 +476,8 @@ void CSDKRestAPIUserUIGroup::DoWithoutLoginStartMeetingBtnClick()
+ 	{
+ 		bNeedWaiting = true;
+ 	}
+-		
+-	if(!bNeedWaiting)
++
++	if (!bNeedWaiting)
+ 	{
+ 		m_parentFrame->ShowErrorMessage(L"Rest API start meeting failed");
+ 		m_parentFrame->SetCurrentPage(m_WithoutLoginRestAPIPage);
+@@ -458,7 +532,7 @@ void CSDKRestAPIUserUIGroup::onMeetingStatusChanged(ZOOM_SDK_NAMESPACE::MeetingS
+ 		if (SDKInterfaceWrap::GetInst().IsSelectCustomizedUIMode())
+ 		{
+ 			CSDKDemoAppEvent* pAppEvent = m_parentFrame->GetAppEvent();
+-			if(pAppEvent)
++			if (pAppEvent)
+ 				pAppEvent->InitCustomizedUI();
+ 		}
+ 		break;
+@@ -466,26 +540,26 @@ void CSDKRestAPIUserUIGroup::onMeetingStatusChanged(ZOOM_SDK_NAMESPACE::MeetingS
+ 	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_DISCONNECTING:
+ 		break;
+ 	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_ENDED:
+-		{
+-			if(m_parentFrame)
+-				m_parentFrame->GetAppEvent()->onSwitchToLoginUI(SwitchToLoginUIType_MeetingEND);
++	{
++		if (m_parentFrame)
++			m_parentFrame->GetAppEvent()->onSwitchToLoginUI(SwitchToLoginUIType_MeetingEND);
+ 
+-		}
+-		break;
++	}
++	break;
+ 	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_FAILED:
++	{
++		if (m_parentFrame)
+ 		{
+-			if(m_parentFrame)
+-			{
+-				m_parentFrame->SetCurrentPage(m_WithoutLoginRestAPIPage);
+-				m_parentFrame->ShowErrorMessage(L"Rest API start meeting failed");
+-			}
++			m_parentFrame->SetCurrentPage(m_WithoutLoginRestAPIPage);
++			m_parentFrame->ShowErrorMessage(L"Rest API start meeting failed");
+ 		}
+-		break;
++	}
++	break;
+ 	case ZOOM_SDK_NAMESPACE::MEETING_STATUS_INMEETING:
+-		{
+-			if(m_parentFrame)
+-				m_parentFrame->GetAppEvent()->onShowLoggedInUI(Demo_Meeting_RestAPI_Start);
+-		}
++	{
++		if (m_parentFrame)
++			m_parentFrame->GetAppEvent()->onShowLoggedInUI(Demo_Meeting_RestAPI_Start);
++	}
+ 	default:
+ 		break;
+ 	}
+@@ -535,41 +609,72 @@ void CSDKLoginUIMgr::SetEvent(CSDKDemoAppEvent* pAppEvent)
+ void CSDKLoginUIMgr::InitWindow()
+ {
+ 	m_LoginWithSSOUIGroup.InitWindow(m_PaintManager, this);
+-	m_WithoutLoginStartJoinMeetingUIGroup.InitWindow(m_PaintManager,this);
+-	m_RestAPIUserUIGroup.InitWindow(m_PaintManager,this);
++	m_WithoutLoginStartJoinMeetingUIGroup.InitWindow(m_PaintManager, this);
++	m_RestAPIUserUIGroup.InitWindow(m_PaintManager, this);
+ 	RECT rc = { 0 };
+-	if( !::GetClientRect(m_hWnd, &rc) ) return;
++	if (!::GetClientRect(m_hWnd, &rc)) return;
+ 	rc.right = rc.left + 524;
+ 	rc.bottom = rc.top + 376;
+-	if( !::AdjustWindowRectEx(&rc, GetWindowStyle(m_hWnd), (!(GetWindowStyle(m_hWnd) & WS_CHILD) && (::GetMenu(m_hWnd) != NULL)), GetWindowExStyle(m_hWnd)) ) return;
++	if (!::AdjustWindowRectEx(&rc, GetWindowStyle(m_hWnd), (!(GetWindowStyle(m_hWnd) & WS_CHILD) && (::GetMenu(m_hWnd) != NULL)), GetWindowExStyle(m_hWnd))) return;
+ 	int ScreenX = GetSystemMetrics(SM_CXSCREEN);
+ 	int ScreenY = GetSystemMetrics(SM_CYSCREEN);
+ 
+-	::SetWindowPos(m_hWnd, NULL, (ScreenX - (rc.right - rc.left)) / 2, 
++	::SetWindowPos(m_hWnd, NULL, (ScreenX - (rc.right - rc.left)) / 2,
+ 		(ScreenY - (rc.bottom - rc.top)) / 2, rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER | SWP_SHOWWINDOW);
+ 
+ 
+-	m_waitingPage = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(_T("waiting")));
+-	m_waitingLabelUI = static_cast<CLabelUI* >(m_PaintManager.FindControl(_T("waiting_label")));
+-	m_gifWaiting = static_cast<CGifAnimUI*>(m_PaintManager.FindControl(_T("gif_waiting"))); 
++	m_waitingPage = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(_T("waiting")));
++	m_waitingLabelUI = static_cast<CLabelUI*>(m_PaintManager.FindControl(_T("waiting_label")));
++	m_gifWaiting = static_cast<CGifAnimUI*>(m_PaintManager.FindControl(_T("gif_waiting")));
+ 	m_btnRestAPI = static_cast<COptionUI*>(m_PaintManager.FindControl(_T("tabbtn_login_with_RestAPI")));
+ 	m_btnLoginWithSSO = static_cast<COptionUI*>(m_PaintManager.FindControl(_T("tabbtn_login_with_SSO")));
+ 	m_btnJoinMeetingOnly = static_cast<COptionUI*>(m_PaintManager.FindControl(_T("tabbtn_JoinMeetingOnly")));
+ 
+-	m_panel_login_content = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_Login_Content"));
+-	m_sso_login_page = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_Login_With_SSO"));
+-	m_restApi_login_page = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_RestAPI_Without_Login"));
+-	m_only_join_page = static_cast<CVerticalLayoutUI* >(m_PaintManager.FindControl(L"panel_Join_Meeting_Only"));
++	m_panel_login_content = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(L"panel_Login_Content"));
++	m_sso_login_page = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(L"panel_Login_With_SSO"));
++	m_restApi_login_page = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(L"panel_RestAPI_Without_Login"));
++	m_only_join_page = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(L"panel_Join_Meeting_Only"));
  
 -	m_currentPage = m_sso_login_page;
 +	m_currentPage = m_only_join_page;
@@ -699,8 +1034,64 @@ index 0e4dd7d..5fd02fc 100644
 +
  void CSDKLoginUIMgr::Notify(TNotifyUI& msg)
  {
- 	if(msg.sType == _T("click"))
-@@ -684,7 +789,12 @@ void CSDKLoginUIMgr::SwitchToWaitingPage(const wchar_t* waiting_message, bool sh
+-	if(msg.sType == _T("click"))
++	if (msg.sType == _T("click"))
+ 	{
+ 		if (msg.pSender == m_btnLoginWithSSO)
+ 		{
+@@ -591,7 +696,7 @@ void CSDKLoginUIMgr::Notify(TNotifyUI& msg)
+ 		{
+ 			m_RestAPIUserUIGroup.Notify(msg);
+ 		}
+-		else if(m_currentPage == m_only_join_page)
++		else if (m_currentPage == m_only_join_page)
+ 		{
+ 			m_WithoutLoginStartJoinMeetingUIGroup.Notify(msg);
+ 		}
+@@ -609,7 +714,7 @@ LRESULT CSDKLoginUIMgr::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
+ 	LRESULT lRes = 0;
+ 	BOOL bHandled = TRUE;
+ 
+-	if( uMsg == WM_CREATE ) 
++	if (uMsg == WM_CREATE)
+ 	{
+ 		m_PaintManager.Init(m_hWnd);
+ 
+@@ -620,20 +725,20 @@ LRESULT CSDKLoginUIMgr::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
+ 
+ 		m_PaintManager.AttachDialog(pRoot);
+ 		m_PaintManager.AddNotifier(this);
+-		InitWindow(); 
++		InitWindow();
+ 
+ 		return lRes;
+ 	}
+ 	else if (uMsg == WM_CLOSE)
+ 	{
+-		OnClose(uMsg, wParam, lParam, bHandled);		
++		OnClose(uMsg, wParam, lParam, bHandled);
+ 	}
+ 	else if (uMsg == WM_DESTROY)
+ 	{
+-		OnDestroy(uMsg, wParam, lParam, bHandled);		
++		OnDestroy(uMsg, wParam, lParam, bHandled);
+ 	}
+ 
+-	if( m_PaintManager.MessageHandler(uMsg, wParam, lParam, lRes) ) 
++	if (m_PaintManager.MessageHandler(uMsg, wParam, lParam, lRes))
+ 	{
+ 		return lRes;
+ 	}
+@@ -655,7 +760,7 @@ LRESULT CSDKLoginUIMgr::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPa
+ 	m_LoginWithSSOUIGroup.UninitWindow();
+ 	m_LoginWithSSOUIGroup.UninitWindow();
+ 	m_WithoutLoginStartJoinMeetingUIGroup.UninitWindow();
+-	m_RestAPIUserUIGroup.UninitWindow();																									  
++	m_RestAPIUserUIGroup.UninitWindow();
+ 	return 0;
+ }
+ 
+@@ -683,7 +788,12 @@ void CSDKLoginUIMgr::SwitchToWaitingPage(const wchar_t* waiting_message, bool sh
  void CSDKLoginUIMgr::ShowErrorMessage(const wchar_t* error_message)
  {
  	if (error_message)
@@ -709,39 +1100,103 @@ index 0e4dd7d..5fd02fc 100644
 +		// Todo better logging
 +		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> narrower;
 +		std::cout << "error: " << narrower.to_bytes(error_message);
-+	//	::MessageBox(NULL, error_message, L"error", MB_OK);
++		//	::MessageBox(NULL, error_message, L"error", MB_OK);
 +	}
  }
  
  void CSDKLoginUIMgr::SwitchToPage(loginTabPage nPage)
-@@ -751,7 +861,7 @@ void CSDKLoginUIMgr::NotifyAuthDone()
+@@ -691,19 +801,19 @@ void CSDKLoginUIMgr::SwitchToPage(loginTabPage nPage)
+ 	m_LoginWithSSOUIGroup.Hide();
+ 	m_WithoutLoginStartJoinMeetingUIGroup.Hide();
+ 	m_RestAPIUserUIGroup.Hide();
+-	switch(nPage)
++	switch (nPage)
+ 	{
+-		case login_RestAPI_Page:
+-			m_RestAPIUserUIGroup.Show();
+-			break;
+-		case login_UseSSO_Page:
+-			m_LoginWithSSOUIGroup.Show();
+-			break;
+-		case login_JoinMeetingOnly_Page:
+-			m_WithoutLoginStartJoinMeetingUIGroup.Show();
+-			break;
+-		default:
+-			break;
++	case login_RestAPI_Page:
++		m_RestAPIUserUIGroup.Show();
++		break;
++	case login_UseSSO_Page:
++		m_LoginWithSSOUIGroup.Show();
++		break;
++	case login_JoinMeetingOnly_Page:
++		m_WithoutLoginStartJoinMeetingUIGroup.Show();
++		break;
++	default:
++		break;
+ 	}
+ }
+ 
+@@ -723,18 +833,18 @@ void CSDKLoginUIMgr::ChangeUIforLoginFailed()
+ 	{
+ 		m_panel_login_content->SetVisible(true);
+ 	}
+-	SwitchToWaitingPage(L"",false);
++	SwitchToWaitingPage(L"", false);
+ 	ShowErrorMessage(CSDKMessInfo::GetInst().GetErrorMessInfo());
+ 
+ }
+ 
+ void CSDKLoginUIMgr::ChangeUIforJoinFailed()
+ {
+-	if(m_panel_login_content)
++	if (m_panel_login_content)
+ 	{
+ 		m_panel_login_content->SetVisible(true);
+ 	}
+-	SwitchToWaitingPage(L"",false);
++	SwitchToWaitingPage(L"", false);
+ }
+ 
+ void CSDKLoginUIMgr::NotifyAuthDone()
+@@ -749,8 +859,8 @@ void CSDKLoginUIMgr::NotifyAuthDone()
+ 
  void CSDKLoginUIMgr::SwitchToPage(SwitchToLoginUIType type_)
  {
-    if(SwitchToLoginUIType_AUTHDONE == type_)
+-   if(SwitchToLoginUIType_AUTHDONE == type_)
 -      SwitchToPage(login_UseSSO_Page);
-+      SwitchToPage(login_JoinMeetingOnly_Page);
++	if (SwitchToLoginUIType_AUTHDONE == type_)
++		SwitchToPage(login_JoinMeetingOnly_Page);
  }
  
  void CSDKLoginUIMgr::CleanUp()
-@@ -782,6 +892,7 @@ void CSDKLoginCBHandler::onLoginReturnWithReason(ZOOM_SDK_NAMESPACE::LOGINSTATUS
+@@ -781,18 +891,19 @@ void CSDKLoginCBHandler::onLoginReturnWithReason(ZOOM_SDK_NAMESPACE::LOGINSTATUS
  {
  	if (ZOOM_SDK_NAMESPACE::LOGIN_SUCCESS == ret)
  	{
+-		TCHAR szlog[MAX_PATH] = {0};
+-		swprintf_s(szlog, MAX_PATH,_T("userName:%s\r\nloggin success"),pAccountInfo->GetDisplayName());
 +		std::cout << "LOGIN SUCCESS" << endl;
- 		TCHAR szlog[MAX_PATH] = {0};
- 		swprintf_s(szlog, MAX_PATH,_T("userName:%s\r\nloggin success"),pAccountInfo->GetDisplayName());
++		TCHAR szlog[MAX_PATH] = { 0 };
++		swprintf_s(szlog, MAX_PATH, _T("userName:%s\r\nloggin success"), pAccountInfo->GetDisplayName());
  		OutputDebugString(szlog);
-@@ -792,7 +903,7 @@ void CSDKLoginCBHandler::onLoginReturnWithReason(ZOOM_SDK_NAMESPACE::LOGINSTATUS
+-		if(m_parentFrame && m_parentFrame->GetAppEvent())
++		if (m_parentFrame && m_parentFrame->GetAppEvent())
+ 		{
+ 			m_parentFrame->GetAppEvent()->onShowLoggedInUI();
+ 		}
  	}
  	if (ZOOM_SDK_NAMESPACE::LOGIN_FAILED == ret)
  	{
 -
+-		if(m_parentFrame && m_parentFrame->GetAppEvent())
 +		std::cout << "LOGIN FAILED; Reason code: " << reason << endl;
- 		if(m_parentFrame && m_parentFrame->GetAppEvent())
++		if (m_parentFrame && m_parentFrame->GetAppEvent())
  		{
  			m_parentFrame->GetAppEvent()->onLoginFailed();
+ 		}
 diff --git a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
-index 5e1c53f..e46f0e1 100644
+index 6591d59..fd995e8 100644
 --- a/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
 +++ b/x64/demo/sdk_demo_v2/LOGIN_sdk_login_UI.h
 @@ -6,6 +6,8 @@
@@ -753,10 +1208,10 @@ index 5e1c53f..e46f0e1 100644
  /////////////////////////
  enum loginTabPage
  {
-@@ -71,16 +73,22 @@ public:
- 	virtual void onMeetingStatusChanged(ZOOM_SDK_NAMESPACE::MeetingStatus status, int iResult = 0);
+@@ -73,16 +75,22 @@ public:
  	virtual void onMeetingStatisticsWarningNotification(ZOOM_SDK_NAMESPACE::StatisticsWarningType type) {};
  	virtual void onMeetingParameterNotification(const ZOOM_SDK_NAMESPACE::MeetingParameter* meeting_param) {};
+ 	virtual void onSuspendParticipantsActivities() {};
 +
 +	//todo, setting these text fields as a data binding breaks abstractions!
 +public:
@@ -780,7 +1235,7 @@ index 5e1c53f..e46f0e1 100644
  };
  
  class CSDKRestAPIUserUIGroup : public CSDKRestAPIUserUIEvent
-@@ -125,6 +133,11 @@ public:
+@@ -128,6 +136,11 @@ public:
  	virtual ~CSDKLoginUIMgr();
  
  	void SetEvent(CSDKDemoAppEvent* pAppEvent);
@@ -792,6 +1247,38 @@ index 5e1c53f..e46f0e1 100644
  public:
  	virtual LPCTSTR		GetWindowClassName() const   {   return _T("zSDKDemoUI");  }
  	UINT GetClassStyle() const { return UI_CLASSSTYLE_FRAME | CS_DBLCLKS ; };
+diff --git a/x64/demo/sdk_demo_v2/ReminderEvent.cpp b/x64/demo/sdk_demo_v2/ReminderEvent.cpp
+new file mode 100644
+index 0000000..54d1380
+--- /dev/null
++++ b/x64/demo/sdk_demo_v2/ReminderEvent.cpp
+@@ -0,0 +1,9 @@
++#include "stdafx.h"
++#include "ReminderEvent.h"
++#include "sdk_util.h"
++
++void ReminderEvent::onReminderNotify(IMeetingReminderContent* content, IMeetingReminderHandler* handle)
++{
++	const bool is_tos = content->GetType() == TYPE_TERMS_OF_SERVICE;
++	if (is_tos) handle->Accept();
++}
+diff --git a/x64/demo/sdk_demo_v2/ReminderEvent.h b/x64/demo/sdk_demo_v2/ReminderEvent.h
+new file mode 100644
+index 0000000..903b700
+--- /dev/null
++++ b/x64/demo/sdk_demo_v2/ReminderEvent.h
+@@ -0,0 +1,11 @@
++#pragma once
++#include <meeting_service_components/meeting_reminder_ctrl_interface.h>
++
++using namespace ZOOMSDK;
++
++class ReminderEvent : public IMeetingReminderEvent
++{
++public:
++	void onReminderNotify(IMeetingReminderContent * content, IMeetingReminderHandler * handle) override;
++};
++
 diff --git a/x64/demo/sdk_demo_v2/SNSService.cpp b/x64/demo/sdk_demo_v2/SNSService.cpp
 new file mode 100644
 index 0000000..fc6ec99
@@ -968,10 +1455,10 @@ index 0000000..e4d21af
 +};
 diff --git a/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp
 new file mode 100644
-index 0000000..f3c15b8
+index 0000000..3bd2d92
 --- /dev/null
 +++ b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.cpp
-@@ -0,0 +1,330 @@
+@@ -0,0 +1,329 @@
 +// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 +// SPDX-License-Identifier: Apache-2.0
 +
@@ -1301,7 +1788,6 @@ index 0000000..f3c15b8
 +#endif
 +
 +}
-+
 diff --git a/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h b/x64/demo/sdk_demo_v2/ZoomSDKAudioRawDataDelegate.h
 new file mode 100644
 index 0000000..7d16031
@@ -2042,23 +2528,23 @@ index ecb11d8..8111d32 100644
  		if (WM_QUIT == msg.message)
  		{
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
-index e270f52..b935e2a 100644
+index e270f52..8ff4d11 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
 +++ b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj
 @@ -83,12 +83,16 @@
      <IntDir>$(Configuration)\</IntDir>
      <LinkIncremental>false</LinkIncremental>
      <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-+    <IncludePath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\h;$(IncludePath)</IncludePath>
-+    <LibraryPath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\lib;$(LibraryPath)</LibraryPath>
++    <IncludePath>C:\opt\zoom-sdk-windows-5.14.10.17290\zoom-sdk-windows-5.14.10.17290\x64\h;$(IncludePath)</IncludePath>
++    <LibraryPath>C:\opt\zoom-sdk-windows-5.14.10.17290\zoom-sdk-windows-5.14.10.17290\x64\lib;$(LibraryPath)</LibraryPath>
    </PropertyGroup>
    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
      <OutDir>..\..\bin\</OutDir>
      <IntDir>$(Configuration)\</IntDir>
      <LinkIncremental>false</LinkIncremental>
      <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-+    <IncludePath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\h;$(IncludePath)</IncludePath>
-+    <LibraryPath>C:\opt\zoom-sdk-windows-5.12.8.10282\zoom-sdk-windows-5.12.8.10282\x64\lib;$(LibraryPath)</LibraryPath>
++    <IncludePath>C:\opt\zoom-sdk-windows-5.14.10.17290\zoom-sdk-windows-5.14.10.17290\x64\h;$(IncludePath)</IncludePath>
++    <LibraryPath>C:\opt\zoom-sdk-windows-5.14.10.17290\zoom-sdk-windows-5.14.10.17290\x64\lib;$(LibraryPath)</LibraryPath>
    </PropertyGroup>
    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
      <ClCompile>
@@ -2144,7 +2630,15 @@ index e270f52..b935e2a 100644
      <ClCompile Include="init_auth_sdk_workflow.cpp" />
      <ClCompile Include="invitation_ui.cpp" />
      <ClCompile Include="invitation_workflow.cpp" />
-@@ -233,6 +244,7 @@
+@@ -219,6 +230,7 @@
+     <ClCompile Include="more_menu_ui.cpp" />
+     <ClCompile Include="ParticipantPopMenu.cpp" />
+     <ClCompile Include="participant_ui.cpp" />
++    <ClCompile Include="ReminderEvent.cpp" />
+     <ClCompile Include="sdk_demo_app.cpp" />
+     <ClCompile Include="sdk_demo_v2.cpp" />
+     <ClCompile Include="sdk_init_auth_ui.cpp" />
+@@ -233,6 +245,7 @@
      <ClCompile Include="SETTINGS_video_workflow.cpp" />
      <ClCompile Include="SETTINGS_virtualBG_workflow.cpp" />
      <ClCompile Include="ShareToolbarWindow.cpp" />
@@ -2152,7 +2646,7 @@ index e270f52..b935e2a 100644
      <ClCompile Include="stdafx.cpp">
        <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
        <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-@@ -245,6 +257,7 @@
+@@ -245,6 +258,7 @@
      <ClCompile Include="user_manager.cpp" />
      <ClCompile Include="util_window.cpp" />
      <ClCompile Include="ViewOptionsWindow.cpp" />
@@ -2160,7 +2654,7 @@ index e270f52..b935e2a 100644
    </ItemGroup>
    <ItemGroup>
      <ClInclude Include="AnnotateBarWindow.h" />
-@@ -268,6 +281,7 @@
+@@ -268,6 +282,7 @@
      <ClInclude Include="custom_ui_video_flow.h" />
      <ClInclude Include="custom_ui_video_mgr.h" />
      <ClInclude Include="display_cc_ui.h" />
@@ -2168,7 +2662,15 @@ index e270f52..b935e2a 100644
      <ClInclude Include="init_auth_sdk_workflow.h" />
      <ClInclude Include="invitation_ui.h" />
      <ClInclude Include="invitation_workflow.h" />
-@@ -301,6 +315,7 @@
+@@ -285,6 +300,7 @@
+     <ClInclude Include="more_menu_ui.h" />
+     <ClInclude Include="ParticipantPopMenu.h" />
+     <ClInclude Include="participant_ui.h" />
++    <ClInclude Include="ReminderEvent.h" />
+     <ClInclude Include="Resource.h" />
+     <ClInclude Include="sdk_demo_app.h" />
+     <ClInclude Include="sdk_demo_app_common.h" />
+@@ -301,6 +317,7 @@
      <ClInclude Include="SETTINGS_video_workflow.h" />
      <ClInclude Include="SETTINGS_virtualBG_workflow.h" />
      <ClInclude Include="ShareToolbarWindow.h" />
@@ -2176,7 +2678,7 @@ index e270f52..b935e2a 100644
      <ClInclude Include="stdafx.h" />
      <ClInclude Include="targetver.h" />
      <ClInclude Include="toolbar_bottom_ui.h" />
-@@ -309,6 +324,7 @@
+@@ -309,6 +326,7 @@
      <ClInclude Include="user_manager.h" />
      <ClInclude Include="util_window.h" />
      <ClInclude Include="ViewOptionsWindow.h" />
@@ -2185,10 +2687,10 @@ index e270f52..b935e2a 100644
    <ItemGroup>
      <ResourceCompile Include="sdk_demo_v2.rc" />
 diff --git a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
-index 00ad46d..82df2db 100644
+index 00ad46d..86d5945 100644
 --- a/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
 +++ b/x64/demo/sdk_demo_v2/sdk_demo_v2.vcxproj.filters
-@@ -315,6 +315,15 @@
+@@ -315,6 +315,18 @@
      <ClCompile Include="join_webinar_wnd_ui.cpp">
        <Filter>Source Files\3_how_to_start_join_meeting\4_webinar_register_join_meeting</Filter>
      </ClCompile>
@@ -2201,10 +2703,13 @@ index 00ad46d..82df2db 100644
 +    <ClCompile Include="SNSService.cpp">
 +      <Filter>Source Files</Filter>
 +    </ClCompile>
++    <ClCompile Include="ReminderEvent.cpp">
++      <Filter>Source Files</Filter>
++    </ClCompile>
    </ItemGroup>
    <ItemGroup>
      <ClInclude Include="sdk_demo_app.h">
-@@ -503,6 +512,15 @@
+@@ -503,6 +515,18 @@
      <ClInclude Include="join_webinar_wnd_ui.h">
        <Filter>Source Files\3_how_to_start_join_meeting\4_webinar_register_join_meeting</Filter>
      </ClInclude>
@@ -2215,6 +2720,9 @@ index 00ad46d..82df2db 100644
 +      <Filter>Source Files</Filter>
 +    </ClInclude>
 +    <ClInclude Include="SNSService.h">
++      <Filter>Source Files</Filter>
++    </ClInclude>
++    <ClInclude Include="ReminderEvent.h">
 +      <Filter>Source Files</Filter>
 +    </ClInclude>
    </ItemGroup>

@@ -57,20 +57,20 @@ The virtual participant runs as a Windows app built ontop of Zoom Meeting Window
 
 If you haven't completed this step from the parent directory instructions
 
-1. Download `zoom-sdk-windows-5.12.8.10282.zip` from the [Zoom App Marketplace](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/)
+1. Download `zoom-sdk-windows-5.14.10.17290.zip` from the [Zoom App Marketplace](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/)
 
-2. Unzip the code archive to the this directory, so there is a **zoom-sdk-windows-5.12.8.10282** directory here.
+2. Unzip the code archive to the this directory, so there is a **zoom-sdk-windows-5.14.10.17290** directory here.
 
 3. Verify that you can successfully run:
 
 	```batch
-	dir zoom-sdk-windows-5.12.8.10282
+	dir zoom-sdk-windows-5.14.10.17290
  	```
 
 4. Apply the Zoom Windows SDK patch:
 
     ```batch
-    git apply -p1 --directory zoom-sdk-windows-5.12.8.10282 --verbose --reject --whitespace=fix zoom_sdk_demo_v2.patch
+    git apply -p1 --directory zoom-sdk-windows-5.14.10.17290 --verbose --reject --whitespace=fix zoom_sdk_demo_v2.patch
     ```
 
 ## Building the Zoom Meeting Windows SDK Application Locally
@@ -175,7 +175,7 @@ ZOOM_APP_SECRET=<Zoom SDK SECRET from Zoom App Marketplace>
 
 To test the functionality of the applicaiton perform the following tasks:
 
-1. In Visual Studio open the solution in `zoom-sdk-windows-5.12.8.10282\x64\demo\sdk_demo_v2` directory
+1. In Visual Studio open the solution in `zoom-sdk-windows-5.14.10.17290\x64\demo\sdk_demo_v2` directory
 
 2. Choose **"Release"** and **"x64"** configuration and build solution. 
 
