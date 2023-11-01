@@ -3,5 +3,5 @@ if defined DOCKER_BUILD (
 ) else (
     call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 )
-cd zoom-sdk-windows-5.14.10.17290\x64\demo\sdk_demo_v2\
+cd zoom-sdk-windows-5.13.10.13355\x64\demo\sdk_demo_v2\
 msbuild sdk_demo_v2.vcxproj /p:configuration=release /p:platform=x64 
