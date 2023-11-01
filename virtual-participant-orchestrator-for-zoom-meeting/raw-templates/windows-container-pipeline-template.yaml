@@ -47,6 +47,10 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-windows-latest/Windows_Server-2019-English-Core-ECS_Optimized/image_id
 
+  ECRPrivateRepoName:
+    Type: String
+    Description: Name of the ECR Repo for the vpf coontariner image
+    
 Resources:
   ArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -64,7 +68,12 @@ Resources:
   DockerRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: "zoom-virtual-participant-windows"
+      RepositoryName: !Sub "${ECRPrivateRepoName}"
+
+  BuilderStageDockerRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${ECRPrivateRepoName}-builder-stage"
 
   # Role for CI/CD pipeline execution
   CodePipelineRole:

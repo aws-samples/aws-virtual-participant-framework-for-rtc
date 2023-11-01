@@ -13,6 +13,7 @@ export class WindowsContainerPipelineStack extends cdk.Stack {
         const cfnTemplate = new cfn_inc.CfnInclude(this, 'WindowsContainerPipelineTemplate', {
             templateFile: 'raw-templates/windows-container-pipeline-template.yaml',
             parameters: {
+                "ECRPrivateRepoName": "zoom-virtual-participant-windows",
                 "CustomActionProviderCategory": "Build",
                 "CustomActionProviderName": "EC2-CodePipeline-Builder",
                 "CustomActionProviderVersion": "100",

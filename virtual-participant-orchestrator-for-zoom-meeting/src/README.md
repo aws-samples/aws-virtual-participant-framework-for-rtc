@@ -25,6 +25,7 @@ The simplest way to run the virtual participant framework in your AWS account is
 * Windows 10 64-bit operating system (or Windows Server 2019)
 * Visual Studio Community (, Professional or Enterprise) 2019 (or 2022); please "ensure that you install Desktop development with C++ option from Workloads and the platform SDKs that you are building for" as described in [Zoom Meeting Windows SDK Getting Started - Prerequisites](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/getting-started/prerequisites/), including the option for **Windows 10 SDK (10.0.18362.0)**
 * [Python3 for Windows 64-bit](https://www.python.org/downloads/windows/)
+* Node version 16 [e.g. using NVM]](https://github.com/nvm-sh/nvm); more recent versions may not work with deployment
 * [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ## Getting Started

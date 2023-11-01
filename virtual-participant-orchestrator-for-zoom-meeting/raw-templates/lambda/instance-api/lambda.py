@@ -88,7 +88,7 @@ def start_instance(event):
                 "Ebs": {
                     "DeleteOnTermination": True,
                     "VolumeSize": 100,
-                    "VolumeType": "gp2",
+                    "VolumeType": "gp3",
                     "Encrypted": True,
                 },
             }
