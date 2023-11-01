@@ -9,7 +9,7 @@ const stream = require('stream');
 const util = require('util');
 const magic_term = require('terminal-kit').terminal;
 
-const REGION = process.env.REGION || 'us-west-2';
+const REGION = process.env.AWS_DEFAULT_REGION || 'us-east-1';
 const TEMP_FILE_PATH = process.env.TEMP_FILE_PATH || './raw_recordings/';
 const IS_CONTENT_REDACTION_ENABLED = (process.env.IS_CONTENT_REDACTION_ENABLED || "true") === "true";
 const TRANSCRIBE_LANGUAGE_CODE = process.env.TRANSCRIBE_LANGUAGE_CODE || 'en-US';

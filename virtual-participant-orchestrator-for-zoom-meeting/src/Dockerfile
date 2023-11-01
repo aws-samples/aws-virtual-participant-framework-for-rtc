@@ -60,7 +60,7 @@ RUN `
 # ===== Git Checkout latest Kinesis Video Streams Producer SDK (CPP) =======================================
 WORKDIR /opt/
 COPY kvs_msvc.patch .
-RUN git clone https://github.com/awslabs/amazon-kinesis-video-streams-producer-sdk-cpp.git
+RUN git clone --depth 1 --branch v3.3.1 https://github.com/awslabs/amazon-kinesis-video-streams-producer-sdk-cpp.git
 WORKDIR /opt/amazon-kinesis-video-streams-producer-sdk-cpp/
 RUN git apply ../kvs_msvc.patch
 
