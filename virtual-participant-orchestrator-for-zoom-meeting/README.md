@@ -177,7 +177,7 @@ ___
 4. In the aws-zoom-msdk-vpf directory, you should now have the aws-virtual-participant-framework-for-rtc, Zoom Windows Meeting SDK, and the cloned MyVPFRepo CodeCommit Repo. In the next step, you will add the Zoom Meeting SDK and the copied contents of the virtual-participant-orchestrator-for-zoom-meeting into the CodeCommit repo 
 
 
-### Copy AWS subproject & Zoom Meeting SDK into CodeCommit repo 
+### Copy AWS subproject and Zoom Meeting SDK into CodeCommit repo 
 
 1.  Copy the contents of the [virtual-participant-orchestrator-for-zoom-meeting/](../virtual-participant-orchestrator-for-zoom-meeting/) subproject - not the root directory of the GitHub repo - to the local directory where the CodeCommit repo was cloned above.
 
@@ -198,7 +198,7 @@ ___
     ```
 
 
-### Create S3 bucket & Package CloudFormation Template
+### Create S3 bucket and Package CloudFormation Template
 
 1. Create S3 bucket local environment variable:
 
