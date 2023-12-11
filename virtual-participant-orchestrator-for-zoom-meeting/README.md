@@ -377,7 +377,7 @@ ___
 
 5. **CDKToolkit**. 
 
-#### CloudFormation Stack Bad State Scenario 
+### CloudFormation Stack Bad State Scenario 
 
 If you accidentally hit delete on all the stacks same time, or did not follow the one step process above, the CloudFormation stacks enter a bad state. This prevents some of stacks from being deleted. Deleting stacks out of sequence causes an IAM Role which stacks depend on to be disposed prematurely. To resolve:
 
