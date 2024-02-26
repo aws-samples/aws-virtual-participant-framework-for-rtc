@@ -1,5 +1,8 @@
 # Zoom Meeting virtual participant application
 
+
+> :warning: The Zoom Meeting sample **IS NO LONGER Functional**. As of Feb 3, 2024 the version of the Zoom Meeting Windows SDK used as a dependency is no longer compatible with Zoom Service. This means the sample app (i.e. the bot application that is created by Virtual Patricipant Framework) can no longer join a Zoom meeting as a participant.  Unfortunately newer versions of the Zoom Meeting Windows SDK wrappend in a Docker container can no longer stream media to Amazon Kinesis Video Stream rendering them incompatible with the sample. After a lengthy investigation we have not been able to resolve the compatiblity issue, highlighting the fragility of this sample solution. This bring our Virtual Participant Framework sample and the experiment to End of Life.  For any community support or questions please connect with the Zoom developer ecosystem team via the [Zoom Developer Forum](https://devforum.zoom.us/).
+
 ## About
 
 This is a subproject of the AWS virtual participant framework for Zoom Meeting. It contains the artifacts needed to build virtual participant Windows applications using the Zoom Meeting Windows SDK which can be downloaded from the [Zoom App Marketplace](https://marketplace.zoom.us/docs/sdk/native-sdks/windows/).
